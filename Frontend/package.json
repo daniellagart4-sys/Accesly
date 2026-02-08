@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@astrojs/check": "^0.9.6",
-    "@astrojs/node": "^9.5.2",
     "@astrojs/react": "^4.4.2",
+    "@astrojs/vercel": "^9.0.4",
     "@stellar/stellar-sdk": "^14.5.0",
     "@supabase/supabase-js": "^2.95.3",
     "astro": "^5.17.1",
