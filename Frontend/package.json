@@ -1,0 +1,28 @@
+{
+  "name": "helpless-halo",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.6",
+    "@astrojs/node": "^9.5.2",
+    "@astrojs/react": "^4.4.2",
+    "@stellar/stellar-sdk": "^14.5.0",
+    "@supabase/supabase-js": "^2.95.3",
+    "astro": "^5.17.1",
+    "jsonwebtoken": "^9.0.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/react": "^19.2.13",
+    "@types/react-dom": "^19.2.3"
+  }
+}

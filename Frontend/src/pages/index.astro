@@ -1,0 +1,28 @@
+---
+/**
+ * index.astro - Main landing page.
+ *
+ * Renders the App component (React island) which handles:
+ * - Google OAuth login via Supabase
+ * - Automatic wallet creation on first login
+ * - Wallet dashboard for returning users
+ *
+ * The `client:load` directive hydrates the React component immediately
+ * on page load, enabling the interactive auth flow.
+ */
+import Layout from '../layouts/Layout.astro';
+import { App } from '../components/App';
+---
+
+<Layout title="Accesly - Web3 Wallet">
+  <App client:load />
+</Layout>
+
+<style>
+  /* Spinner animation used by loading states in React components */
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>
