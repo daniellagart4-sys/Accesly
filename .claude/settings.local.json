@@ -12,7 +12,18 @@
       "mcp__supabase__get_publishable_keys",
       "mcp__supabase__apply_migration",
       "mcp__supabase__get_advisors",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(git push:*)",
+      "Bash(git fetch:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "WebFetch(domain:docs.privy.io)",
+      "WebFetch(domain:docs.reown.com)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:conermurphy.com)",
+      "WebFetch(domain:cloud.reown.com)"
     ]
   }
 }

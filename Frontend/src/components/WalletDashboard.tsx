@@ -17,6 +17,7 @@ import { BalanceCard } from './BalanceCard';
 import { SendModal } from './SendModal';
 import { ReceiveModal } from './ReceiveModal';
 import { TransactionHistory } from './TransactionHistory';
+import { RotateKeysModal } from './RotateKeysModal';
 
 interface WalletInfo {
   contractId: string;
@@ -41,6 +42,7 @@ export function WalletDashboard({ session }: WalletDashboardProps) {
   // Modal states
   const [showSend, setShowSend] = useState(false);
   const [showReceive, setShowReceive] = useState(false);
+  const [showRotateKeys, setShowRotateKeys] = useState(false);
 
   // Incremented to trigger refresh in child components after a tx
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -210,6 +212,12 @@ export function WalletDashboard({ session }: WalletDashboardProps) {
             <span style={styles.value}>{truncate(wallet.recoverySigners[0].publicKey)}</span>
           </div>
         )}
+        <button
+          onClick={() => setShowRotateKeys(true)}
+          style={styles.rotateButton}
+        >
+          Rotate Keys
+        </button>
       </div>
 
       {/* Sign out */}
@@ -229,6 +237,16 @@ export function WalletDashboard({ session }: WalletDashboardProps) {
         <ReceiveModal
           stellarAddress={wallet.stellarAddress}
           onClose={() => setShowReceive(false)}
+        />
+      )}
+      {showRotateKeys && (
+        <RotateKeysModal
+          accessToken={session.access_token}
+          onClose={() => setShowRotateKeys(false)}
+          onSuccess={() => {
+            fetchWalletInfo();
+            setRefreshTrigger((prev) => prev + 1);
+          }}
         />
       )}
     </div>
@@ -341,5 +359,17 @@ const styles: Record<string, React.CSSProperties> = {
   hint: {
     color: '#64748b',
     fontSize: '0.85rem',
+  },
+  rotateButton: {
+    width: '100%',
+    marginTop: '0.75rem',
+    padding: '0.6rem',
+    backgroundColor: 'transparent',
+    color: '#f59e0b',
+    border: '1px solid rgba(245, 158, 11, 0.3)',
+    borderRadius: '8px',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    cursor: 'pointer',
   },
 };

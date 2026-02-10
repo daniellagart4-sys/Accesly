@@ -17,9 +17,8 @@
 import type { APIRoute } from 'astro';
 import { getAuthUser, supabaseAdmin } from '../../../services/supabase';
 import { sendPayment } from '../../../services/stellar';
-import { decrypt } from '../../../services/crypto';
-
-const ENCRYPTION_KEY = import.meta.env.ENCRYPTION_KEY;
+import { reconstructKey } from '../../../services/shamir';
+import type { StoredShares } from '../../../services/shamir';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -82,11 +81,12 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Get the encrypted secret key from recovery_signers
+    // Get the encrypted Shamir shares from recovery_signers
     const { data: signer } = await supabaseAdmin
       .from('recovery_signers')
-      .select('encrypted_secret_key, encryption_iv, encryption_tag')
+      .select('kms_share, local_share, gcp_share, key_hash')
       .eq('wallet_id', wallet.id)
+      .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -98,13 +98,8 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // --- 4. Decrypt the secret key ---
-    const secret = decrypt(
-      signer.encrypted_secret_key,
-      ENCRYPTION_KEY,
-      signer.encryption_iv,
-      signer.encryption_tag
-    );
+    // --- 4. Reconstruct the secret key from Shamir shares (2-of-3) ---
+    const secret = await reconstructKey(signer as StoredShares);
 
     // --- 5. Send the payment ---
     const txHash = await sendPayment(secret, destination, amount, memo);

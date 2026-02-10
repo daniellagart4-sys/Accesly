@@ -12,12 +12,15 @@
     "@astrojs/check": "^0.9.6",
     "@astrojs/react": "^4.4.2",
     "@astrojs/vercel": "^9.0.4",
+    "@aws-sdk/client-kms": "^3.985.0",
+    "@google-cloud/kms": "^5.3.0",
     "@stellar/stellar-sdk": "^14.5.0",
     "@supabase/supabase-js": "^2.95.3",
     "astro": "^5.17.1",
     "jsonwebtoken": "^9.0.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "shamir-secret-sharing": "^0.0.4",
     "typescript": "^5.9.3"
   },
   "devDependencies": {
