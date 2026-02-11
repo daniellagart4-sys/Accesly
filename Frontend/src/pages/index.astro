@@ -18,11 +18,33 @@ import { App } from '../components/App';
   <App client:load />
 </Layout>
 
-<style>
+<style is:global>
   /* Spinner animation used by loading states in React components */
   @keyframes spin {
     to {
       transform: rotate(360deg);
+    }
+  }
+
+  /* Modal/panel fade-in */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Modal/panel slide-up entrance */
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 </style>
