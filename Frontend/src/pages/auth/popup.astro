@@ -1,0 +1,21 @@
+---
+/**
+ * /auth/popup - OAuth popup page for SDK authentication.
+ *
+ * This page is opened in a popup window by the Accesly SDK.
+ * It handles Google OAuth via Supabase and sends the resulting
+ * auth tokens back to the parent window via postMessage.
+ */
+import Layout from '../../layouts/Layout.astro';
+import { AuthPopup } from '../../components/AuthPopup';
+---
+
+<Layout title="Connect - Accesly">
+  <AuthPopup client:load />
+</Layout>
+
+<style is:global>
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>

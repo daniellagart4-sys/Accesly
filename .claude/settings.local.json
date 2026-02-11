@@ -23,7 +23,9 @@
       "WebSearch",
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:conermurphy.com)",
-      "WebFetch(domain:cloud.reown.com)"
+      "WebFetch(domain:cloud.reown.com)",
+      "Bash(ls \"C:\\\\Users\\\\danie\\\\Desktop\\\\MyProjects\\\\Web3\\\\Accesly\\\\Frontend\\\\src\\\\pages\\\\developers\"\" 2>/dev/null || echo \"Directory empty or doesn 't exist \")",
+      "Bash(npm run build:*)"
     ]
   }
 }

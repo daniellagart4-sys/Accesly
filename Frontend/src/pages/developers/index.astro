@@ -1,0 +1,32 @@
+---
+/**
+ * /developers - Developer portal page.
+ *
+ * Renders the DeveloperDashboard React component which handles:
+ * - Developer authentication (Google OAuth via Supabase)
+ * - App registration and API key management
+ * - Allowed origins configuration
+ * - SDK installation and usage documentation
+ *
+ * Uses `client:load` for immediate hydration since the component
+ * manages its own auth state and needs to run on page load.
+ */
+import Layout from '../../layouts/Layout.astro';
+import { DeveloperDashboard } from '../../components/DeveloperDashboard';
+---
+
+<Layout title="Accesly - Developer Portal">
+  <DeveloperDashboard client:load />
+</Layout>
+
+<style is:global>
+  /* Spinner animation used by loading states */
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Expand main container for developer docs readability */
+  main {
+    max-width: 720px;
+  }
+</style>
