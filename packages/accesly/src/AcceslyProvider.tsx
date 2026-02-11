@@ -18,12 +18,13 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import { AcceslyClient } from './AcceslyClient';
+import { AcceslyClient, AcceslyApiError } from './AcceslyClient';
 import { openAuthPopup } from './auth';
 import type {
   AcceslyConfig,
   AcceslyContextType,
   WalletInfo,
+  TransactionRecord,
   SendPaymentParams,
 } from './types';
 
@@ -75,13 +76,13 @@ export function AcceslyProvider({
       setWallet(data.wallet);
       config.onConnect?.(data.wallet);
     } catch (err: any) {
-      // If 404, create wallet (first login)
-      if (err.message?.includes('404') || err.message?.includes('not found')) {
+      // If 404, user has no wallet yet — create one (first login)
+      if (err instanceof AcceslyApiError && err.status === 404) {
         await createWallet();
         return;
       }
-      // If session expired, clear and let user reconnect
-      if (err.message?.includes('Session expired')) {
+      // If session expired, clear tokens and let user reconnect
+      if (err instanceof AcceslyApiError && err.status === 401) {
         client.clearTokens();
         setWallet(null);
       }
@@ -152,6 +153,20 @@ export function AcceslyProvider({
     [client]
   );
 
+  /** Rotate wallet keys */
+  const rotateKeys = useCallback(async () => {
+    return client.rotateKeys();
+  }, [client]);
+
+  /** Get transaction history */
+  const getTransactions = useCallback(
+    async (limit = 20) => {
+      const data = await client.getTransactions(limit);
+      return data.transactions;
+    },
+    [client]
+  );
+
   /** Refresh balance on demand */
   const refreshBalance = useCallback(async () => {
     await fetchBalance();
@@ -171,6 +186,8 @@ export function AcceslyProvider({
     connect,
     disconnect,
     sendPayment,
+    rotateKeys,
+    getTransactions,
     refreshBalance,
     refreshWallet,
   };

@@ -1,24 +1,38 @@
 /**
  * WalletPanel.tsx - SDK wallet panel modal with tabs.
  *
- * Opened by clicking the connected pill.
- * Tabs: Wallet (send/receive), Activity (transactions),
- *       Account (details), Security (recovery + disconnect).
+ * Opened by clicking the connected pill. Mirrors the main app's UI:
+ * - Wallet tab: Send and Receive buttons (open sub-views)
+ * - Activity tab: Real transaction history via getTransactions
+ * - Account tab: Wallet details with copy buttons
+ * - Security tab: Recovery info, Rotate Keys, Disconnect
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAccesly } from '../hooks/useAccesly';
-import type { TransactionRecord, SendPaymentParams } from '../types';
+import type { TransactionRecord } from '../types';
 
 type Tab = 'wallet' | 'activity' | 'account' | 'security';
+type WalletView = 'main' | 'send' | 'receive';
 
 interface WalletPanelProps {
   onClose: () => void;
 }
 
 export function WalletPanel({ onClose }: WalletPanelProps) {
-  const { wallet, balance, disconnect, sendPayment, refreshBalance } = useAccesly();
+  const {
+    wallet,
+    balance,
+    disconnect,
+    sendPayment,
+    rotateKeys,
+    getTransactions,
+    refreshBalance,
+    refreshWallet,
+  } = useAccesly();
+
   const [activeTab, setActiveTab] = useState<Tab>('wallet');
+  const [walletView, setWalletView] = useState<WalletView>('main');
 
   // Send form state
   const [sendDest, setSendDest] = useState('');
@@ -32,10 +46,14 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [txLoading, setTxLoading] = useState(false);
 
+  // Security state
+  const [rotating, setRotating] = useState(false);
+  const [rotateError, setRotateError] = useState<string | null>(null);
+
   // Clipboard feedback
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Lazy-load transactions when Activity tab is selected
+  // Load transactions when Activity tab is selected
   useEffect(() => {
     if (activeTab === 'activity' && transactions.length === 0) {
       loadTransactions();
@@ -47,14 +65,10 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
   async function loadTransactions() {
     setTxLoading(true);
     try {
-      // Use the AcceslyClient indirectly through the parent context
-      // For SDK, we fetch directly since we have the client
-      const res = await fetch('/api/wallet/transactions?limit=20');
-      // Note: This won't work cross-origin. In the SDK, transactions
-      // are loaded via the AcceslyClient. For now, we'll show placeholder.
-      // TODO: Expose getTransactions through context
+      const txs = await getTransactions(20);
+      setTransactions(txs);
     } catch {
-      // Silently fail
+      // Silently fail, keep empty list
     } finally {
       setTxLoading(false);
     }
@@ -79,6 +93,34 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
     }
   }
 
+  function resetSendForm() {
+    setSendResult(null);
+    setSendDest('');
+    setSendAmount('');
+    setSendMemo('');
+    setSendError(null);
+    setWalletView('main');
+  }
+
+  async function handleRotateKeys() {
+    if (!confirm('This will generate a new keypair and update your contract. Continue?')) return;
+    setRotating(true);
+    setRotateError(null);
+    try {
+      await rotateKeys();
+      await refreshWallet();
+    } catch (err: any) {
+      setRotateError(err.message);
+    } finally {
+      setRotating(false);
+    }
+  }
+
+  function handleDisconnect() {
+    disconnect();
+    onClose();
+  }
+
   function truncate(addr: string, start = 6, end = 6): string {
     if (addr.length <= start + end + 3) return addr;
     return `${addr.slice(0, start)}...${addr.slice(-end)}`;
@@ -90,9 +132,13 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
     setTimeout(() => setCopiedField(null), 1500);
   }
 
-  function handleDisconnect() {
-    disconnect();
-    onClose();
+  function relativeTime(isoDate: string): string {
+    const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 172800) return 'yesterday';
+    return `${Math.floor(diff / 86400)}d ago`;
   }
 
   const formattedBalance = balance
@@ -134,7 +180,7 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
           {tabs.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => { setActiveTab(tab.key); setWalletView('main'); }}
               style={{
                 ...styles.tab,
                 ...(activeTab === tab.key ? styles.tabActive : {}),
@@ -156,10 +202,12 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
     </div>
   );
 
-  // --- Tab renderers ---
+  // ---------------------------------------------------------------------------
+  // Tab renderers
+  // ---------------------------------------------------------------------------
 
   function renderWalletTab() {
-    // Send success state
+    // Send success screen
     if (sendResult) {
       return (
         <div style={styles.centeredCol}>
@@ -171,78 +219,206 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
           <p style={{ color: '#64748b', fontSize: '0.75rem', fontFamily: 'monospace' }}>
             {sendResult.slice(0, 12)}...{sendResult.slice(-12)}
           </p>
-          <button onClick={() => { setSendResult(null); setSendDest(''); setSendAmount(''); setSendMemo(''); }} style={styles.primaryBtn}>
-            Done
+          <button onClick={resetSendForm} style={styles.primaryBtn}>Done</button>
+        </div>
+      );
+    }
+
+    // Send form sub-view
+    if (walletView === 'send') {
+      return (
+        <div style={styles.subView}>
+          <button onClick={() => setWalletView('main')} style={styles.backBtn}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Back
+          </button>
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>Destination</label>
+            <input
+              type="text"
+              placeholder="G..."
+              value={sendDest}
+              onChange={(e) => setSendDest(e.target.value)}
+              maxLength={56}
+              style={styles.formInput}
+            />
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>Amount (XLM)</label>
+            <input
+              type="number"
+              placeholder="0.00"
+              value={sendAmount}
+              onChange={(e) => setSendAmount(e.target.value)}
+              min="0.0000001"
+              step="any"
+              style={styles.formInput}
+            />
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>Memo (optional)</label>
+            <input
+              type="text"
+              placeholder="What is this for?"
+              value={sendMemo}
+              onChange={(e) => setSendMemo(e.target.value)}
+              maxLength={28}
+              style={styles.formInput}
+            />
+          </div>
+          {sendError && <p style={styles.error}>{sendError}</p>}
+          <button
+            onClick={handleSend}
+            disabled={sending || !sendDest || !sendAmount}
+            style={{
+              ...styles.primaryBtn,
+              opacity: sending || !sendDest || !sendAmount ? 0.5 : 1,
+            }}
+          >
+            {sending ? 'Sending...' : 'Send Payment'}
           </button>
         </div>
       );
     }
 
+    // Receive sub-view
+    if (walletView === 'receive') {
+      return (
+        <div style={styles.subView}>
+          <button onClick={() => setWalletView('main')} style={styles.backBtn}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Back
+          </button>
+          <div style={styles.centeredCol}>
+            <div style={styles.receiveIconBig}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <polyline points="19 12 12 19 5 12" />
+              </svg>
+            </div>
+            <p style={{ color: '#e2e8f0', fontWeight: 600, fontSize: '1rem', margin: 0 }}>
+              Receive XLM
+            </p>
+            <p style={{ color: '#64748b', fontSize: '0.8rem', margin: 0, textAlign: 'center' as const }}>
+              Share your Stellar address to receive payments
+            </p>
+            <div style={styles.addressBox}>
+              <span style={styles.addressText}>{wallet!.stellarAddress}</span>
+            </div>
+            <button
+              onClick={() => copyToClipboard(wallet!.stellarAddress, 'receive')}
+              style={styles.primaryBtn}
+            >
+              {copiedField === 'receive' ? 'Copied!' : 'Copy Address'}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Main wallet view — Send & Receive buttons
     return (
       <div style={styles.walletTab}>
-        {/* Send form */}
-        <div style={styles.formGroup}>
-          <label style={styles.formLabel}>Destination</label>
-          <input
-            type="text"
-            placeholder="G..."
-            value={sendDest}
-            onChange={(e) => setSendDest(e.target.value)}
-            maxLength={56}
-            style={styles.formInput}
-          />
+        <div style={styles.actionRow}>
+          <button onClick={() => setWalletView('send')} style={styles.actionBtn}>
+            <div style={styles.actionIcon}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="19" x2="12" y2="5" />
+                <polyline points="5 12 12 5 19 12" />
+              </svg>
+            </div>
+            <span style={styles.actionLabel}>Send</span>
+          </button>
+          <button onClick={() => setWalletView('receive')} style={styles.actionBtn}>
+            <div style={{ ...styles.actionIcon, ...styles.actionIconReceive }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <polyline points="19 12 12 19 5 12" />
+              </svg>
+            </div>
+            <span style={styles.actionLabel}>Receive</span>
+          </button>
         </div>
-        <div style={styles.formGroup}>
-          <label style={styles.formLabel}>Amount (XLM)</label>
-          <input
-            type="number"
-            placeholder="0.00"
-            value={sendAmount}
-            onChange={(e) => setSendAmount(e.target.value)}
-            min="0.0000001"
-            step="any"
-            style={styles.formInput}
-          />
-        </div>
-        <div style={styles.formGroup}>
-          <label style={styles.formLabel}>Memo (optional)</label>
-          <input
-            type="text"
-            placeholder="What is this for?"
-            value={sendMemo}
-            onChange={(e) => setSendMemo(e.target.value)}
-            maxLength={28}
-            style={styles.formInput}
-          />
-        </div>
-        {sendError && <p style={styles.error}>{sendError}</p>}
-        <button
-          onClick={handleSend}
-          disabled={sending || !sendDest || !sendAmount}
-          style={{
-            ...styles.primaryBtn,
-            opacity: sending || !sendDest || !sendAmount ? 0.5 : 1,
-          }}
-        >
-          {sending ? 'Sending...' : 'Send Payment'}
-        </button>
-
-        {/* Copy address for receiving */}
-        <button
-          onClick={() => copyToClipboard(wallet!.stellarAddress, 'receive')}
-          style={styles.receiveBtn}
-        >
-          {copiedField === 'receive' ? 'Address Copied!' : 'Copy Address to Receive'}
-        </button>
       </div>
     );
   }
 
   function renderActivityTab() {
+    if (txLoading && transactions.length === 0) {
+      return <p style={styles.emptyText}>Loading transactions...</p>;
+    }
+
+    if (transactions.length === 0) {
+      return <p style={styles.emptyText}>No transactions yet</p>;
+    }
+
     return (
-      <p style={styles.emptyText}>
-        Transaction history coming soon.
-      </p>
+      <div style={styles.txList}>
+        {transactions.map((tx) => (
+          <div key={tx.id} style={styles.txRow}>
+            <div
+              style={{
+                ...styles.txIcon,
+                backgroundColor:
+                  tx.type === 'received'
+                    ? 'rgba(52, 211, 153, 0.15)'
+                    : 'rgba(248, 113, 113, 0.15)',
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={tx.type === 'received' ? '#34d399' : '#f87171'}
+                strokeWidth="2.5"
+              >
+                {tx.type === 'received' ? (
+                  <>
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <polyline points="19 12 12 19 5 12" />
+                  </>
+                ) : (
+                  <>
+                    <line x1="12" y1="19" x2="12" y2="5" />
+                    <polyline points="5 12 12 5 19 12" />
+                  </>
+                )}
+              </svg>
+            </div>
+
+            <div style={styles.txDetails}>
+              <span style={styles.txType}>
+                {tx.type === 'received' ? 'Received' : 'Sent'}
+              </span>
+              <span style={styles.txCounterparty}>
+                {tx.type === 'received' ? 'from ' : 'to '}
+                {truncate(tx.counterparty)}
+              </span>
+            </div>
+
+            <div style={styles.txAmountCol}>
+              <span
+                style={{
+                  ...styles.txAmount,
+                  color: tx.type === 'received' ? '#34d399' : '#f87171',
+                }}
+              >
+                {tx.type === 'received' ? '+' : '-'}
+                {parseFloat(tx.amount).toLocaleString('en-US', {
+                  maximumFractionDigits: 2,
+                })}{' '}
+                {tx.asset}
+              </span>
+              <span style={styles.txTime}>{relativeTime(tx.createdAt)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
     );
   }
 
@@ -283,6 +459,7 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
   function renderSecurityTab() {
     return (
       <div style={styles.securityTab}>
+        {/* Recovery status */}
         <div style={styles.fieldList}>
           <div style={styles.field}>
             <span style={styles.fieldLabel}>Recovery</span>
@@ -292,7 +469,36 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
             <span style={styles.fieldLabel}>Method</span>
             <span style={styles.fieldValue}>Google ({wallet!.email})</span>
           </div>
+          {wallet!.recoverySigners && wallet!.recoverySigners.length > 0 && (
+            <div style={styles.field}>
+              <span style={styles.fieldLabel}>Signer</span>
+              <span style={styles.fieldValue}>
+                {truncate(wallet!.recoverySigners[0].publicKey)}
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Rotate Keys */}
+        {rotateError && <p style={styles.error}>{rotateError}</p>}
+        <button
+          onClick={handleRotateKeys}
+          disabled={rotating}
+          style={{
+            ...styles.rotateBtn,
+            opacity: rotating ? 0.5 : 1,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 2v6h-6" />
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+            <path d="M3 22v-6h6" />
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+          </svg>
+          {rotating ? 'Rotating...' : 'Rotate Keys'}
+        </button>
+
+        {/* Disconnect */}
         <button onClick={handleDisconnect} style={styles.disconnectBtn}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -306,6 +512,7 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
   }
 }
 
+/** Generate a deterministic HSL color from a Stellar address */
 function identiconColor(address: string): string {
   let hash = 0;
   for (let i = 0; i < address.length; i++) {
@@ -410,11 +617,68 @@ const styles: Record<string, React.CSSProperties> = {
     overflowY: 'auto' as const,
     padding: '1rem 1.25rem 1.25rem',
   },
-  // Wallet tab
+
+  // Wallet tab — action buttons
   walletTab: {
     display: 'flex',
     flexDirection: 'column' as const,
+    gap: '1rem',
+  },
+  actionRow: {
+    display: 'flex',
+    gap: '1rem',
+    justifyContent: 'center',
+  },
+  actionBtn: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '1.25rem 1.5rem',
+    backgroundColor: '#1a1a2e',
+    border: '1px solid #2a2a4a',
+    borderRadius: '16px',
+    cursor: 'pointer',
+    transition: 'border-color 0.2s',
+    flex: 1,
+  },
+  actionIcon: {
+    width: '44px',
+    height: '44px',
+    borderRadius: '50%',
+    backgroundColor: 'rgba(102, 126, 234, 0.15)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#667eea',
+  },
+  actionIconReceive: {
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    color: '#34d399',
+  },
+  actionLabel: {
+    fontSize: '0.85rem',
+    fontWeight: 500,
+    color: '#e2e8f0',
+  },
+
+  // Sub-views (send/receive forms)
+  subView: {
+    display: 'flex',
+    flexDirection: 'column' as const,
     gap: '0.75rem',
+  },
+  backBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.25rem',
+    background: 'none',
+    border: 'none',
+    color: '#8b8ba7',
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+    padding: '0 0 0.25rem',
+    width: 'fit-content',
   },
   formGroup: {
     display: 'flex',
@@ -450,17 +714,6 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     marginTop: '0.25rem',
   },
-  receiveBtn: {
-    backgroundColor: 'transparent',
-    color: '#a5b4fc',
-    border: '1.5px solid #4a4a7a',
-    borderRadius: '10px',
-    padding: '0.65rem',
-    fontSize: '0.85rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    width: '100%',
-  },
   error: {
     color: '#f87171',
     fontSize: '0.8rem',
@@ -476,6 +729,95 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '0.5rem',
     padding: '1rem 0',
   },
+
+  // Receive view
+  receiveIconBig: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '50%',
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '0.25rem',
+  },
+  addressBox: {
+    backgroundColor: '#1a1a2e',
+    border: '1px solid #2a2a4a',
+    borderRadius: '8px',
+    padding: '0.75rem',
+    width: '100%',
+    marginTop: '0.5rem',
+  },
+  addressText: {
+    fontFamily: 'monospace',
+    fontSize: '0.7rem',
+    color: '#a5b4fc',
+    wordBreak: 'break-all' as const,
+    lineHeight: 1.5,
+  },
+
+  // Activity tab
+  txList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+  },
+  txRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    padding: '0.65rem 0',
+    borderBottom: '1px solid #1a1a2e',
+  },
+  txIcon: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  txDetails: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    flex: 1,
+    minWidth: 0,
+  },
+  txType: {
+    color: '#e2e8f0',
+    fontSize: '0.85rem',
+    fontWeight: 500,
+  },
+  txCounterparty: {
+    color: '#64748b',
+    fontSize: '0.7rem',
+    fontFamily: 'monospace',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+  },
+  txAmountCol: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'flex-end',
+    flexShrink: 0,
+  },
+  txAmount: {
+    fontSize: '0.85rem',
+    fontWeight: 600,
+  },
+  txTime: {
+    color: '#64748b',
+    fontSize: '0.65rem',
+  },
+  emptyText: {
+    color: '#64748b',
+    fontSize: '0.85rem',
+    textAlign: 'center' as const,
+    padding: '2rem 0',
+  },
+
   // Account tab
   fieldList: {
     display: 'flex',
@@ -508,11 +850,27 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     transition: 'color 0.2s, border-color 0.2s',
   },
+
   // Security tab
   securityTab: {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: '1rem',
+  },
+  rotateBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    width: '100%',
+    padding: '0.65rem',
+    backgroundColor: 'transparent',
+    color: '#f59e0b',
+    border: '1px solid rgba(245, 158, 11, 0.3)',
+    borderRadius: '10px',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    cursor: 'pointer',
   },
   disconnectBtn: {
     display: 'flex',
@@ -528,11 +886,5 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.85rem',
     fontWeight: 500,
     cursor: 'pointer',
-  },
-  emptyText: {
-    color: '#64748b',
-    fontSize: '0.85rem',
-    textAlign: 'center' as const,
-    padding: '2rem 0',
   },
 };

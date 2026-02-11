@@ -67,6 +67,12 @@ interface AcceslyContextType {
     sendPayment: (params: SendPaymentParams) => Promise<{
         txHash: string;
     }>;
+    /** Rotate wallet keys (generates new keypair, updates contract) */
+    rotateKeys: () => Promise<{
+        newStellarAddress: string;
+    }>;
+    /** Get transaction history */
+    getTransactions: (limit?: number) => Promise<TransactionRecord[]>;
     /** Refresh the balance */
     refreshBalance: () => Promise<void>;
     /** Refresh wallet info */

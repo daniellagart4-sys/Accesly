@@ -12,6 +12,16 @@ import type { WalletInfo, TransactionRecord, SendPaymentParams, AuthTokens } fro
 const STORAGE_KEY = 'accesly_auth';
 const DEFAULT_BASE_URL = 'https://accesly.vercel.app';
 
+/** Custom error that preserves the HTTP status code */
+export class AcceslyApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'AcceslyApiError';
+    this.status = status;
+  }
+}
+
 export class AcceslyClient {
   private baseUrl: string;
   private appId: string;
@@ -90,7 +100,10 @@ export class AcceslyClient {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || data.details || `Request failed: ${res.status}`);
+      throw new AcceslyApiError(
+        data.error || data.details || `Request failed: ${res.status}`,
+        res.status
+      );
     }
 
     return res.json() as Promise<T>;
