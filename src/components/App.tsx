@@ -1,65 +1,107 @@
 /**
  * App.tsx - Main application component.
  *
- * Manages the authentication state and renders either:
- * - GoogleLoginButton (if not authenticated)
- * - WalletDashboard (if authenticated)
- *
- * Uses Supabase Auth to listen for session changes.
- * The Google OAuth flow redirects the user to Google,
- * then back to the app where Supabase automatically
- * picks up the session from the URL hash.
+ * Uses WalletProvider for global state and renders:
+ * - Landing page with ConnectButton (when disconnected)
+ * - Connected state with wallet pill (when authenticated)
+ * - ConnectModal and WalletPanel overlays
  */
 
-import { useState, useEffect } from 'react';
-import type { Session } from '@supabase/supabase-js';
-import { supabase } from '../services/supabase-client';
-import { GoogleLoginButton } from './GoogleLoginButton';
-import { WalletDashboard } from './WalletDashboard';
+import { useState } from 'react';
+import { WalletProvider, useWallet } from './wallet/WalletProvider';
+import { ConnectButton } from './wallet/ConnectButton';
+import { ConnectModal } from './wallet/ConnectModal';
+import { WalletPanel } from './wallet/WalletPanel';
 
-export function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+function AppContent() {
+  const { session, wallet, loading, creating, error } = useWallet();
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [showWalletPanel, setShowWalletPanel] = useState(false);
 
-  useEffect(() => {
-    // Check for an existing session on mount
-    // (handles page refresh and OAuth redirect return)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // Listen for auth state changes (login, logout, token refresh)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // Cleanup the listener on unmount
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Show a minimal loading state while checking for existing session
+  // Initial loading
   if (loading) {
     return (
-      <div style={styles.loading}>
+      <div style={styles.centered}>
         <div style={styles.spinner} />
       </div>
     );
   }
 
-  // Render login or dashboard based on authentication state
-  if (session) {
-    return <WalletDashboard session={session} />;
+  // Not connected - landing page
+  if (!session) {
+    return (
+      <div style={styles.landing}>
+        <h1 style={styles.title}>Accesly</h1>
+        <p style={styles.subtitle}>
+          Your Web3 wallet, powered by account abstraction
+        </p>
+
+        <ConnectButton
+          onConnectClick={() => setShowConnectModal(true)}
+          onPillClick={() => {}}
+        />
+
+        <p style={styles.footer}>
+          A Stellar wallet will be created automatically for you
+        </p>
+
+        {showConnectModal && (
+          <ConnectModal onClose={() => setShowConnectModal(false)} />
+        )}
+      </div>
+    );
   }
 
-  return <GoogleLoginButton />;
+  // Connected state
+  return (
+    <div style={styles.connected}>
+      <h1 style={styles.connectedLogo}>Accesly</h1>
+
+      <ConnectButton
+        onConnectClick={() => {}}
+        onPillClick={() => setShowWalletPanel(true)}
+      />
+
+      {/* Creating wallet status */}
+      {creating && (
+        <div style={styles.statusBox}>
+          <div style={styles.spinnerSmall} />
+          <p style={styles.statusText}>Creating your wallet on Stellar...</p>
+          <p style={styles.statusHint}>
+            Deploying smart contract, this may take a moment
+          </p>
+        </div>
+      )}
+
+      {/* Error display */}
+      {error && (
+        <div style={styles.errorBox}>
+          <p style={styles.errorText}>{error}</p>
+        </div>
+      )}
+
+      {/* Hint when ready */}
+      {!creating && !error && wallet && (
+        <p style={styles.connectedHint}>Tap your wallet to get started</p>
+      )}
+
+      {showWalletPanel && (
+        <WalletPanel onClose={() => setShowWalletPanel(false)} />
+      )}
+    </div>
+  );
+}
+
+export function App() {
+  return (
+    <WalletProvider>
+      <AppContent />
+    </WalletProvider>
+  );
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  loading: {
+  centered: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
@@ -72,5 +114,94 @@ const styles: Record<string, React.CSSProperties> = {
     borderTop: '3px solid #667eea',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
+  },
+
+  // Landing page
+  landing: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: '1.25rem',
+    textAlign: 'center' as const,
+  },
+  title: {
+    fontSize: '2.75rem',
+    fontWeight: 700,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    margin: 0,
+    letterSpacing: '-0.02em',
+  },
+  subtitle: {
+    color: '#94a3b8',
+    fontSize: '1.05rem',
+    maxWidth: '320px',
+    lineHeight: 1.5,
+    margin: 0,
+  },
+  footer: {
+    color: '#475569',
+    fontSize: '0.8rem',
+    marginTop: '0.5rem',
+  },
+
+  // Connected state
+  connected: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: '1rem',
+    textAlign: 'center' as const,
+  },
+  connectedLogo: {
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    margin: '0 0 0.5rem',
+  },
+  connectedHint: {
+    color: '#475569',
+    fontSize: '0.8rem',
+    margin: 0,
+  },
+  statusBox: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: '0.5rem',
+    marginTop: '0.5rem',
+  },
+  spinnerSmall: {
+    width: '24px',
+    height: '24px',
+    border: '2px solid #2a2a4a',
+    borderTop: '2px solid #667eea',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+  },
+  statusText: {
+    color: '#94a3b8',
+    fontSize: '0.9rem',
+    margin: 0,
+  },
+  statusHint: {
+    color: '#475569',
+    fontSize: '0.8rem',
+    margin: 0,
+  },
+  errorBox: {
+    backgroundColor: 'rgba(248, 113, 113, 0.1)',
+    border: '1px solid rgba(248, 113, 113, 0.2)',
+    borderRadius: '10px',
+    padding: '0.75rem 1rem',
+    marginTop: '0.5rem',
+  },
+  errorText: {
+    color: '#f87171',
+    fontSize: '0.85rem',
+    margin: 0,
   },
 };

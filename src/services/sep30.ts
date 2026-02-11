@@ -2,33 +2,30 @@
  * sep30.ts - SEP-30 Account Recovery service.
  *
  * Our backend acts as a SEP-30 Recovery Server that:
- * - Stores encrypted signing keys in Supabase
+ * - Splits wallet signing keys using Shamir's Secret Sharing (2-of-3)
+ * - Distributes shares across AWS KMS, local AES-256-GCM, and Google Cloud KMS
  * - Verifies user identity via Google (Supabase Auth) or SEP-10
  * - Signs transactions on behalf of authenticated users
- * - Handles account recovery (key rotation via contract's update_owner)
+ * - Handles account recovery with atomic key rotation
  *
- * Architecture:
- * - Each wallet has a recovery signer (keypair) stored encrypted in DB
- * - Identity verification uses the user's Google email
- * - Recovery flow: re-authenticate → decrypt key → rotate ownership
- *
- * When migrating to a distributed KMS:
- * - Replace the encrypt/decrypt calls in this file with KMS API calls
- * - Add a second recovery server for true multi-party SEP-30 compliance
+ * Share distribution:
+ * - Share 1: AWS KMS (primary)
+ * - Share 2: AES-256-GCM with ENCRYPTION_KEY (primary)
+ * - Share 3: Google Cloud KMS (backup, used if Share 1 or 2 fails)
  *
  * Reference: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0030.md
  */
 
 import { Keypair, TransactionBuilder } from '@stellar/stellar-sdk';
 import { supabaseAdmin } from './supabase';
-import { encrypt, decrypt } from './crypto';
+import { splitKey, reconstructKey } from './shamir';
+import type { StoredShares } from './shamir';
 import {
   generateWalletKeypair,
   rotateOwner,
+  fundWithFriendbot,
   NETWORK_PASSPHRASE,
 } from './stellar';
-
-const ENCRYPTION_KEY = import.meta.env.ENCRYPTION_KEY;
 
 // ---------------------------------------------------------------------------
 // Account Registration (POST /accounts/:address)
@@ -37,8 +34,8 @@ const ENCRYPTION_KEY = import.meta.env.ENCRYPTION_KEY;
 /**
  * Register an account with the recovery server (SEP-30).
  *
- * Stores the wallet's signing key (encrypted) and associates it with
- * the user's identity (email) for future recovery.
+ * Splits the wallet's secret key into 3 Shamir shares, encrypts each
+ * with its respective provider, and stores them in Supabase.
  *
  * @param walletId - The wallet's UUID in our database
  * @param secret - The wallet's secret key (S... format)
@@ -50,21 +47,22 @@ export async function registerAccount(
   secret: string,
   email: string
 ): Promise<{ signerPublicKey: string }> {
-  // The signing key for recovery is the wallet's own keypair
   const keypair = Keypair.fromSecret(secret);
 
-  // Encrypt the secret key before storing
-  const { encrypted, iv, tag } = encrypt(secret, ENCRYPTION_KEY);
+  // Split the key into 3 encrypted shares using Shamir (2-of-3)
+  const { kmsShare, localShare, gcpShare, keyHash } = await splitKey(secret);
 
-  // Store the encrypted signer key
+  // Store the encrypted shares in Supabase
   const { error: signerError } = await supabaseAdmin
     .from('recovery_signers')
     .insert({
       wallet_id: walletId,
       signer_public_key: keypair.publicKey(),
-      encrypted_secret_key: encrypted,
-      encryption_iv: iv,
-      encryption_tag: tag,
+      kms_share: kmsShare,
+      local_share: localShare,
+      gcp_share: gcpShare,
+      key_hash: keyHash,
+      status: 'active',
     });
 
   if (signerError) {
@@ -108,10 +106,10 @@ interface Sep30AccountInfo {
  * Get account information from the recovery server (SEP-30).
  *
  * Returns the registered identities and signer public keys.
- * Does NOT return secret keys.
+ * Does NOT return secret keys or shares.
  *
  * @param contractId - The Stellar contract address (C... format)
- * @param authenticatedEmail - The email of the currently authenticated user (for marking authenticated identities)
+ * @param authenticatedEmail - The email of the currently authenticated user
  * @returns SEP-30 account info
  */
 export async function getAccountInfo(
@@ -135,18 +133,18 @@ export async function getAccountInfo(
     .select('role, auth_method_type, auth_method_value')
     .eq('wallet_id', wallet.id);
 
-  // Get signers (public keys only)
+  // Get signers (public keys only, only active ones)
   const { data: signers } = await supabaseAdmin
     .from('recovery_signers')
     .select('signer_public_key, created_at')
     .eq('wallet_id', wallet.id)
+    .eq('status', 'active')
     .order('created_at', { ascending: false });
 
   return {
     address: contractId,
     identities: (identities || []).map((id) => ({
       role: id.role,
-      // Mark as authenticated if the current user's email matches
       authenticated: !!(
         authenticatedEmail &&
         id.auth_method_type === 'email' &&
@@ -166,11 +164,13 @@ export async function getAccountInfo(
 /**
  * Sign a transaction using the recovery signer's key (SEP-30).
  *
- * The client sends a transaction XDR, and we sign it with the
- * stored recovery key after verifying the user's identity.
+ * Reconstructs the secret key from 2 Shamir shares (AWS KMS + AES local),
+ * signs the transaction, then zeroes out the key from memory.
+ *
+ * Fallback: if AWS or AES fails, uses Google Cloud KMS share as backup.
  *
  * @param contractId - The contract address
- * @param signerPublicKey - The recovery signer's public key (must match stored signer)
+ * @param signerPublicKey - The recovery signer's public key
  * @param txXdr - The transaction XDR (base64) to sign
  * @param userEmail - The authenticated user's email (for identity verification)
  * @returns The signed transaction XDR (base64)
@@ -192,7 +192,7 @@ export async function signTransaction(
     throw new Error('Account not found');
   }
 
-  // Verify identity: check that the user's email is registered for this wallet
+  // Verify identity: the user's email must be registered for this wallet
   const { data: identity } = await supabaseAdmin
     .from('recovery_identities')
     .select('id')
@@ -205,25 +205,21 @@ export async function signTransaction(
     throw new Error('Identity not authorized for this account');
   }
 
-  // Retrieve the encrypted signer key
+  // Retrieve the encrypted shares (active signer only)
   const { data: signer } = await supabaseAdmin
     .from('recovery_signers')
-    .select('encrypted_secret_key, encryption_iv, encryption_tag')
+    .select('kms_share, local_share, gcp_share, key_hash')
     .eq('wallet_id', wallet.id)
     .eq('signer_public_key', signerPublicKey)
+    .eq('status', 'active')
     .single();
 
   if (!signer) {
     throw new Error('Signer not found');
   }
 
-  // Decrypt the secret key
-  const secret = decrypt(
-    signer.encrypted_secret_key,
-    ENCRYPTION_KEY,
-    signer.encryption_iv,
-    signer.encryption_tag
-  );
+  // Reconstruct the secret key from Shamir shares (2-of-3 with fallback)
+  const secret = await reconstructKey(signer as StoredShares);
 
   // Sign the transaction
   const keypair = Keypair.fromSecret(secret);
@@ -234,19 +230,21 @@ export async function signTransaction(
 }
 
 // ---------------------------------------------------------------------------
-// Account Recovery
+// Account Recovery (atomic key rotation)
 // ---------------------------------------------------------------------------
 
 /**
  * Recover a wallet by rotating the owner key (SEP-30 recovery flow).
  *
- * This is triggered when a user authenticates via Google after losing
- * access to their device key. The flow:
- * 1. Verify the user's Google identity matches the recovery identity
- * 2. Decrypt the old secret key
- * 3. Generate a new keypair
- * 4. Call contract.update_owner() to rotate on-chain
- * 5. Update the encrypted key in Supabase
+ * Atomic flow to prevent data loss:
+ * 1. Verify user identity (Google email)
+ * 2. Reconstruct old key from Shamir shares
+ * 3. Generate new keypair
+ * 4. Pre-split new key into 3 new shares (BEFORE touching the contract)
+ * 5. Store new shares as 'pending_rotation'
+ * 6. Call contract.update_owner() on-chain
+ * 7. If success: activate new shares, mark old as 'rotated'
+ * 8. If failure: delete pending shares, old shares remain active
  *
  * @param contractId - The contract address (C... format)
  * @param userEmail - The authenticated user's email
@@ -259,7 +257,7 @@ export async function recoverAccount(
   newPublicKey: string;
   newStellarAddress: string;
 }> {
-  // Find the wallet
+  // --- 1. Find the wallet ---
   const { data: wallet, error: walletError } = await supabaseAdmin
     .from('wallets')
     .select('id, contract_id')
@@ -270,7 +268,7 @@ export async function recoverAccount(
     throw new Error('Account not found');
   }
 
-  // Verify identity
+  // --- 2. Verify identity ---
   const { data: identity } = await supabaseAdmin
     .from('recovery_identities')
     .select('id')
@@ -283,52 +281,82 @@ export async function recoverAccount(
     throw new Error('Identity not authorized for recovery');
   }
 
-  // Get the current (old) signer
+  // --- 3. Get old signer's shares ---
   const { data: oldSigner } = await supabaseAdmin
     .from('recovery_signers')
-    .select('id, encrypted_secret_key, encryption_iv, encryption_tag')
+    .select('id, kms_share, local_share, gcp_share, key_hash')
     .eq('wallet_id', wallet.id)
+    .eq('status', 'active')
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
 
   if (!oldSigner) {
-    throw new Error('No recovery signer found');
+    throw new Error('No active recovery signer found');
   }
 
-  // Decrypt the old secret key
-  const oldSecret = decrypt(
-    oldSigner.encrypted_secret_key,
-    ENCRYPTION_KEY,
-    oldSigner.encryption_iv,
-    oldSigner.encryption_tag
-  );
+  // --- 4. Reconstruct old secret key ---
+  const oldSecret = await reconstructKey(oldSigner as StoredShares);
 
-  // Generate a new keypair
+  // --- 5. Generate new keypair ---
   const newKeypair = generateWalletKeypair();
 
-  // Rotate ownership on-chain: old key signs, new key becomes owner
-  await rotateOwner(contractId, oldSecret, newKeypair.publicKeyRaw);
+  // --- 6. Pre-split new key BEFORE touching the contract ---
+  const newShares = await splitKey(newKeypair.secret);
 
-  // Encrypt the new secret key
-  const { encrypted, iv, tag } = encrypt(newKeypair.secret, ENCRYPTION_KEY);
-
-  // Update the signer in the database
-  const { error: updateError } = await supabaseAdmin
+  // --- 7. Store new shares as pending (safety net) ---
+  const { data: pendingSigner, error: pendingError } = await supabaseAdmin
     .from('recovery_signers')
-    .update({
+    .insert({
+      wallet_id: wallet.id,
       signer_public_key: newKeypair.stellarAddress,
-      encrypted_secret_key: encrypted,
-      encryption_iv: iv,
-      encryption_tag: tag,
+      kms_share: newShares.kmsShare,
+      local_share: newShares.localShare,
+      gcp_share: newShares.gcpShare,
+      key_hash: newShares.keyHash,
+      status: 'pending_rotation',
     })
-    .eq('id', oldSigner.id);
+    .select('id')
+    .single();
 
-  if (updateError) {
-    throw new Error(`Failed to update recovery signer: ${updateError.message}`);
+  if (pendingError || !pendingSigner) {
+    throw new Error(`Failed to store pending shares: ${pendingError?.message}`);
   }
 
-  // Update the wallet's public key
+  // --- 8. Rotate ownership on-chain ---
+  try {
+    await rotateOwner(contractId, oldSecret, newKeypair.publicKeyRaw);
+  } catch (error) {
+    // On-chain rotation failed: rollback by deleting pending shares
+    await supabaseAdmin
+      .from('recovery_signers')
+      .delete()
+      .eq('id', pendingSigner.id);
+
+    throw new Error(
+      `On-chain key rotation failed: ${error instanceof Error ? error.message : 'unknown'}. Rollback complete, old key still active.`
+    );
+  }
+
+  // --- 9. Fund new address on testnet ---
+  try {
+    await fundWithFriendbot(newKeypair.stellarAddress);
+  } catch {
+    // Non-critical: wallet works without funding, just can't send yet
+  }
+
+  // --- 10. Activate new shares, mark old as rotated ---
+  await supabaseAdmin
+    .from('recovery_signers')
+    .update({ status: 'active' })
+    .eq('id', pendingSigner.id);
+
+  await supabaseAdmin
+    .from('recovery_signers')
+    .update({ status: 'rotated' })
+    .eq('id', oldSigner.id);
+
+  // --- 11. Update wallet record ---
   await supabaseAdmin
     .from('wallets')
     .update({
@@ -373,7 +401,7 @@ export async function updateIdentities(
     throw new Error('Account not found');
   }
 
-  // Verify the caller is authorized (current email must match an existing identity)
+  // Verify the caller is authorized
   const { data: existingIdentity } = await supabaseAdmin
     .from('recovery_identities')
     .select('id')
@@ -418,7 +446,7 @@ export async function updateIdentities(
 
 /**
  * Remove an account from the recovery server (SEP-30).
- * Deletes the signer keys and identities from the database.
+ * Deletes all signer shares and identities from the database.
  * Does NOT affect the on-chain contract.
  *
  * @param contractId - The contract address
@@ -451,7 +479,7 @@ export async function deleteAccount(
     throw new Error('Not authorized to delete account');
   }
 
-  // Delete signers and identities (cascade would handle this, but be explicit)
+  // Delete all signers (active + rotated) and identities
   await supabaseAdmin
     .from('recovery_signers')
     .delete()

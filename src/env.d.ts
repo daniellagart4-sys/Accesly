@@ -25,6 +25,19 @@ interface ImportMetaEnv {
   // Security
   readonly ENCRYPTION_KEY: string;
   readonly JWT_SECRET: string;
+
+  // AWS KMS (Share 1 encryption)
+  readonly AWS_ACCESS_KEY_ID: string;
+  readonly AWS_SECRET_ACCESS_KEY: string;
+  readonly AWS_REGION: string;
+  readonly AWS_KMS_KEY_ARN: string;
+
+  // Google Cloud KMS (Share 3 encryption / backup)
+  readonly GCP_KMS_PROJECT_ID: string;
+  readonly GCP_KMS_LOCATION: string;
+  readonly GCP_KMS_KEY_RING: string;
+  readonly GCP_KMS_KEY_NAME: string;
+  readonly GCP_SERVICE_ACCOUNT_JSON: string;
 }
 
 interface ImportMeta {
