@@ -45,6 +45,7 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
   // Activity state
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [txLoading, setTxLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Security state
   const [rotating, setRotating] = useState(false);
@@ -53,12 +54,14 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
   // Clipboard feedback
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Load transactions when Activity tab is selected
+  // Reload transactions every time Activity tab is opened or refreshTrigger changes.
+  // Also auto-refresh every 15s while the tab is active (catches incoming payments).
   useEffect(() => {
-    if (activeTab === 'activity' && transactions.length === 0) {
-      loadTransactions();
-    }
-  }, [activeTab]);
+    if (activeTab !== 'activity') return;
+    loadTransactions();
+    const interval = setInterval(loadTransactions, 15000);
+    return () => clearInterval(interval);
+  }, [activeTab, refreshTrigger]);
 
   if (!wallet) return null;
 
@@ -86,6 +89,7 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
       });
       setSendResult(result.txHash);
       refreshBalance();
+      setRefreshTrigger((prev) => prev + 1);
     } catch (err: any) {
       setSendError(err.message);
     } finally {
@@ -600,7 +604,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.75rem 0.5rem',
     background: 'none',
     border: 'none',
-    borderBottom: '2px solid transparent',
+    borderBottomWidth: '2px',
+    borderBottomStyle: 'solid' as const,
+    borderBottomColor: 'transparent',
     color: '#64748b',
     fontSize: '0.8rem',
     fontWeight: 500,

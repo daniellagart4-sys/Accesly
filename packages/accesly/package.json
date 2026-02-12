@@ -1,6 +1,6 @@
 {
   "name": "accesly",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Accesly SDK - Account abstraction wallet for Stellar. Drop-in React components for wallet authentication, balance display, and payments.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
