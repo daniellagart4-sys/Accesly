@@ -25,7 +25,8 @@
       "WebFetch(domain:conermurphy.com)",
       "WebFetch(domain:cloud.reown.com)",
       "Bash(ls \"C:\\\\Users\\\\danie\\\\Desktop\\\\MyProjects\\\\Web3\\\\Accesly\\\\Frontend\\\\src\\\\pages\\\\developers\"\" 2>/dev/null || echo \"Directory empty or doesn 't exist \")",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git log:*)"
     ]
   }
 }

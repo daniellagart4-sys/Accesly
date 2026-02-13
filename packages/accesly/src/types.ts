@@ -54,6 +54,12 @@ export interface SendPaymentParams {
   memo?: string;
 }
 
+/** Result from signing a transaction */
+export interface SignResult {
+  signedXdr: string;
+  txHash?: string;
+}
+
 /** The public context provided by useAccesly hook */
 export interface AcceslyContextType {
   /** Whether the initial auth check is in progress */
@@ -80,4 +86,8 @@ export interface AcceslyContextType {
   refreshBalance: () => Promise<void>;
   /** Refresh wallet info */
   refreshWallet: () => Promise<void>;
+  /** Sign a transaction XDR without submitting */
+  signTransaction: (xdr: string) => Promise<SignResult>;
+  /** Sign and submit a transaction XDR */
+  signAndSubmit: (xdr: string) => Promise<SignResult>;
 }

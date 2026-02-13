@@ -7,7 +7,7 @@
  * - API key injection in every request
  */
 
-import type { WalletInfo, TransactionRecord, SendPaymentParams, AuthTokens } from './types';
+import type { WalletInfo, TransactionRecord, SendPaymentParams, AuthTokens, SignResult } from './types';
 
 const STORAGE_KEY = 'accesly_auth';
 const DEFAULT_BASE_URL = 'https://accesly.vercel.app';
@@ -171,5 +171,21 @@ export class AcceslyClient {
   /** Rotate wallet keys */
   async rotateKeys(): Promise<{ newStellarAddress: string }> {
     return this.request('/api/wallet/rotate', { method: 'POST' });
+  }
+
+  /** Sign a transaction XDR without submitting to the network */
+  async signTransaction(xdr: string): Promise<SignResult> {
+    return this.request('/api/wallet/sign', {
+      method: 'POST',
+      body: JSON.stringify({ xdr, submit: false }),
+    });
+  }
+
+  /** Sign a transaction XDR and submit it to the network */
+  async signAndSubmit(xdr: string): Promise<SignResult> {
+    return this.request('/api/wallet/sign', {
+      method: 'POST',
+      body: JSON.stringify({ xdr, submit: true }),
+    });
   }
 }

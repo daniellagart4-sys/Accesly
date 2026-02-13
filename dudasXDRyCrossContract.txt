@@ -1,0 +1,31 @@
+Cross-contract call (programas tú en Rust)                                                                                                                                                                                                                                                                                                                                                                                                
+  Funcionalidades que quieras ofrecer de fábrica a todos los usuarios de Accesly:                                                                                                                                     
+                                                                                                                                                                                                                        - Swap nativo — Integrar un DEX como Soroswap directamente en tu wallet, para que el usuario haga swap desde el botón "Swap" del SDK sin que el dev haga nada                                                       
+  - Trustlines automáticas — Que tu contrato agregue trustlines para USDC/EURC cuando el usuario lo pida desde la UI del wallet                                                                                         - Pagos multi-token — Enviar tokens que no sean XLM (USDC, etc) desde tu wallet directamente                                                                                                                        
+  - Staking integrado — Si Stellar tiene protocolos de staking, integrarlos como feature del wallet                                                                                                                                                                                                                                                                                                                                         
+  Básicamente: features que tú quieres que todos los usuarios tengan sin que el desarrollador escriba una línea de código.
+
+  XDR Signing (programa el desarrollador)
+
+  Todo lo que un dev externo quiera hacer con su propia dApp:
+
+  - "Estoy construyendo un marketplace de NFTs y quiero que los usuarios paguen con su wallet Accesly"
+  - "Tengo un contrato de crowdfunding y necesito que los usuarios depositen"
+  - "Hice un juego on-chain y necesito que firmen movimientos"
+  - "Tengo un protocolo DeFi y quiero integrar Accesly como opción de wallet"
+
+  Básicamente: cualquier caso que tú no puedes predecir porque depende de lo que construya cada desarrollador.
+
+  En resumen
+  ┌─────────────────┬───────────────────────────┬──────────────────────────────────┐
+  │                 │      Cross-contract       │           XDR Signing            │
+  ├─────────────────┼───────────────────────────┼──────────────────────────────────┤
+  │ Para qué        │ Features core de Accesly  │ Ecosistema abierto               │
+  ├─────────────────┼───────────────────────────┼──────────────────────────────────┤
+  │ Quién lo usa    │ El usuario final          │ El desarrollador                 │
+  ├─────────────────┼───────────────────────────┼──────────────────────────────────┤
+  │ Ejemplo         │ Botón "Swap" en tu wallet │ Dev integra tu wallet en su dApp │
+  ├─────────────────┼───────────────────────────┼──────────────────────────────────┤
+  │ Prioridad ahora │ Después                   │ Primero (desbloquea a los devs)  │
+  └─────────────────┴───────────────────────────┴──────────────────────────────────┘
+  XDR signing es lo que necesitas primero. Cross-contract calls las agregas después cuando quieras features premium en tu wallet.

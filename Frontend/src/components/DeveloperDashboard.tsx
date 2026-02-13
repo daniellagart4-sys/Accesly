@@ -428,9 +428,11 @@ function MyWalletUI() {
     error,          // string | null
     connect,        // () => Promise<void>
     disconnect,     // () => void
-    sendPayment,    // (params) => Promise<{ txHash }>
-    refreshBalance, // () => Promise<void>
-    refreshWallet,  // () => Promise<void>
+    sendPayment,      // (params) => Promise<{ txHash }>
+    signTransaction,  // (xdr) => Promise<SignResult>
+    signAndSubmit,    // (xdr) => Promise<SignResult>
+    refreshBalance,   // () => Promise<void>
+    refreshWallet,    // () => Promise<void>
   } = useAccesly();
 
   if (loading) return <p>Loading...</p>;
@@ -483,9 +485,43 @@ async function handleSend() {
   WalletInfo,         // Wallet details
   TransactionRecord,  // Transaction history entry
   SendPaymentParams,  // sendPayment() parameters
+  SignResult,         // signTransaction() / signAndSubmit() result
   AcceslyContextType, // Full context shape (useAccesly return)
 } from 'accesly';`}
           </pre>
+        </div>
+
+        {/* XDR Signing */}
+        <div style={styles.card}>
+          <h2 style={styles.cardTitle}>XDR Signing</h2>
+          <p style={styles.cardDesc}>
+            Sign arbitrary Stellar transactions with the user's custodial key.
+            This lets you integrate Accesly wallets into any dApp — marketplaces,
+            DeFi protocols, games, crowdfunding, and more.
+          </p>
+          <h3 style={{ ...styles.cardTitle, fontSize: '0.8rem', marginTop: '0.5rem' }}>Sign only (you submit)</h3>
+          <pre style={styles.codeBlock}>
+{`const { signTransaction } = useAccesly();
+
+// Build your transaction with the Stellar SDK,
+// then pass the XDR to signTransaction:
+const { signedXdr } = await signTransaction(unsignedXdr);
+
+// Submit it yourself via Horizon, Soroban RPC, etc.`}
+          </pre>
+          <h3 style={{ ...styles.cardTitle, fontSize: '0.8rem', marginTop: '0.5rem' }}>Sign + Submit</h3>
+          <pre style={styles.codeBlock}>
+{`const { signAndSubmit } = useAccesly();
+
+const { signedXdr, txHash } = await signAndSubmit(unsignedXdr);
+console.log('Confirmed:', txHash);`}
+          </pre>
+          <h3 style={{ ...styles.cardTitle, fontSize: '0.8rem', marginTop: '0.5rem' }}>Important notes</h3>
+          <ul style={{ color: '#8b8ba7', fontSize: '0.8rem', lineHeight: 1.8, paddingLeft: '1.2rem', margin: '0 0 0.5rem' }}>
+            <li>The transaction <strong style={{ color: '#e2e8f0' }}>source account</strong> must be the user's <code style={styles.code}>stellarAddress</code></li>
+            <li><strong style={{ color: '#f87171' }}>Blocked operations:</strong> accountMerge, setOptions that modify masterWeight / signers / thresholds</li>
+            <li>FeeBumpTransaction is not supported</li>
+          </ul>
         </div>
 
         {/* WalletInfo Shape */}

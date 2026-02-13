@@ -52,5 +52,6 @@ export type {
   WalletInfo,
   TransactionRecord,
   SendPaymentParams,
+  SignResult,
   AcceslyContextType,
 } from './types';

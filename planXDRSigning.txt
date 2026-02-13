@@ -1,0 +1,55 @@
+● Plan: XDR Signing (usando shamir.ts existente)                                                                                                                                                                                                                                                                                                                                                                                            
+  ---                                                                                                                                                                                                                 
+  1. Backend — POST /api/wallet/sign                                                                                                                                                                                                                                                                                                                                                                                                        
+  Archivo nuevo: Frontend/src/pages/api/wallet/sign.ts                                                                                                                                                                
+  
+  Sigue el mismo patrón que send.ts (que ya funciona con Shamir):                                                                                                                                                                                                                                                                                                                                                                           
+  1. Verificar auth (JWT) → user.id
+  2. Buscar wallet en wallets → wallet_id, stellar_address
+  3. Buscar shares en recovery_signers (mismo query que send.ts línea 85-92)
+  4. reconstructKey(signer as StoredShares) → secret key temporal
+  5. Decodificar el XDR con TransactionBuilder.fromXDR()
+  6. Validaciones de seguridad:
+    - Source de la transacción === stellar_address del usuario
+    - Bloquear accountMerge
+    - Bloquear setOptions que modifique signers o masterWeight
+  7. Firmar con la keypair
+  8. Si submit: true → enviar a Stellar → devolver { signedXdr, txHash }
+  9. Si submit: false → devolver { signedXdr }
+
+  Imports que ya existen y reutilizo:
+  - reconstructKey, StoredShares de services/shamir
+  - getAuthUser, supabaseAdmin de services/supabase
+
+  ---
+  2. SDK — 2 métodos nuevos
+
+  AcceslyClient.ts — agregar:
+  - signTransaction(xdr) → llama /api/wallet/sign con submit: false
+  - signAndSubmit(xdr) → llama /api/wallet/sign con submit: true
+
+  types.ts — agregar SignResult + ambos métodos al AcceslyContextType
+
+  AcceslyProvider.tsx — exponer ambos con useCallback
+
+  ---
+  3. Docs — DeveloperDashboard.tsx
+
+  Nueva sección "XDR Signing" con ejemplos de uso y lista de operaciones bloqueadas.
+
+  ---
+  Archivos
+  ┌─────┬────────────────────────────────────────────────┬──────────────────────┐
+  │  #  │                    Archivo                     │        Cambio        │
+  ├─────┼────────────────────────────────────────────────┼──────────────────────┤
+  │ 1   │ Frontend/src/pages/api/wallet/sign.ts          │ Nuevo                │
+  ├─────┼────────────────────────────────────────────────┼──────────────────────┤
+  │ 2   │ packages/accesly/src/AcceslyClient.ts          │ +2 métodos           │
+  ├─────┼────────────────────────────────────────────────┼──────────────────────┤
+  │ 3   │ packages/accesly/src/types.ts                  │ +tipos + contexto    │
+  ├─────┼────────────────────────────────────────────────┼──────────────────────┤
+  │ 4   │ packages/accesly/src/AcceslyProvider.tsx       │ +exponer en contexto │
+  ├─────┼────────────────────────────────────────────────┼──────────────────────┤
+  │ 5   │ Frontend/src/components/DeveloperDashboard.tsx │ +docs XDR signing    │
+  └─────┴────────────────────────────────────────────────┴──────────────────────┘
+  Nada nuevo para Shamir — se reutiliza services/shamir.ts tal cual.

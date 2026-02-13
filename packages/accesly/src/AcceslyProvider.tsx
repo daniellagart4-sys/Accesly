@@ -26,6 +26,7 @@ import type {
   WalletInfo,
   TransactionRecord,
   SendPaymentParams,
+  SignResult,
 } from './types';
 
 /** Internal context - use the useAccesly hook to access it */
@@ -177,6 +178,22 @@ export function AcceslyProvider({
     await loadWallet();
   }, [client]);
 
+  /** Sign a transaction XDR without submitting */
+  const signTransaction = useCallback(
+    async (xdr: string): Promise<SignResult> => {
+      return client.signTransaction(xdr);
+    },
+    [client]
+  );
+
+  /** Sign and submit a transaction XDR */
+  const signAndSubmit = useCallback(
+    async (xdr: string): Promise<SignResult> => {
+      return client.signAndSubmit(xdr);
+    },
+    [client]
+  );
+
   const contextValue: AcceslyContextType = {
     loading,
     creating,
@@ -190,6 +207,8 @@ export function AcceslyProvider({
     getTransactions,
     refreshBalance,
     refreshWallet,
+    signTransaction,
+    signAndSubmit,
   };
 
   return (
