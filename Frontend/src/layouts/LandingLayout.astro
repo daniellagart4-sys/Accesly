@@ -1,0 +1,75 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Accesly — Onboarding Users to Stellar',
+  description = 'Security infrastructure for safe onboarding and account access on Stellar. Social login, key management, and non-custodial recovery.'
+} = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+:root {
+  --bg: #0c0c0f;
+  --bg2: #141418;
+  --bg3: #1c1c22;
+  --bg4: #26262e;
+  --lav: #a78bfa;
+  --lav2: #c4b5fd;
+  --lavD: #7c3aed;
+  --lavDD: #6d28d9;
+  --mint: #34d399;
+  --mint2: #6ee7b7;
+  --mintD: #059669;
+  --tx: #f4f4f5;
+  --tx2: #a1a1aa;
+  --tx3: #71717a;
+  --border: rgba(255, 255, 255, 0.06);
+  --glass: rgba(255, 255, 255, 0.03);
+  --r: 16px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  color: var(--tx);
+  background: var(--bg);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; border: none; }
+::selection { background: var(--lavD); color: #fff; }
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--lav);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+a, button { touch-action: manipulation; }
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+</style>

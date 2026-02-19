@@ -1,50 +1,1640 @@
 ---
-/**
- * index.astro - Main landing page.
- *
- * Renders the App component (React island) which handles:
- * - Google OAuth login via Supabase
- * - Automatic wallet creation on first login
- * - Wallet dashboard for returning users
- *
- * The `client:load` directive hydrates the React component immediately
- * on page load, enabling the interactive auth flow.
- */
-import Layout from '../layouts/Layout.astro';
-import { App } from '../components/App';
+import LandingLayout from '../layouts/LandingLayout.astro';
+
+const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 38'%3E%3Cpath d='M20.8,0.0L19.6,0.3L18.8,0.6L18.3,0.8L17.8,1.1L17.4,1.4L17.1,1.7L16.8,1.9L16.5,2.2L16.3,2.5L16.1,2.8L15.9,3.0L15.9,3.3L15.7,3.6L15.5,3.9L15.4,4.1L15.3,4.4L15.1,4.7L15.0,5.0L14.9,5.2L14.8,5.5L14.6,5.8L14.5,6.1L14.3,6.3L14.2,6.6L14.2,6.9L13.9,7.2L13.8,7.4L13.7,7.7L13.5,8.0L13.4,8.3L13.4,8.5L13.2,8.8L13.1,9.1L13.0,9.4L12.9,9.6L12.7,9.9L12.6,10.2L12.5,10.5L12.3,10.7L12.2,11.0L12.1,11.3L12.0,11.6L11.8,11.8L11.6,12.1L11.5,12.4L11.4,12.7L11.3,12.9L11.1,13.2L11.0,13.5L11.0,13.8L10.8,14.0L10.7,14.3L10.6,14.6L10.4,14.9L10.3,15.1L10.2,15.4L10.1,15.7L9.9,16.0L9.8,16.2L9.7,16.5L9.5,16.8L9.4,17.1L9.3,17.3L9.1,17.6L9.0,17.9L8.9,18.2L8.7,18.4L8.6,18.7L8.6,19.0L8.4,19.3L8.3,19.6L8.2,19.8L8.0,20.1L7.9,20.4L7.8,20.7L7.7,20.9L7.6,21.2L7.4,21.5L7.3,21.8L7.1,22.0L7.0,22.3L6.9,22.6L6.7,22.9L6.6,23.1L6.5,23.4L6.4,23.7L6.2,24.0L6.1,24.2L6.1,24.5L5.9,24.8L5.8,25.1L5.7,25.3L5.5,25.6L5.4,25.9L5.3,26.2L5.2,26.4L5.0,26.7L4.9,27.0L4.8,27.3L4.6,27.5L4.5,27.8L4.4,28.1L4.3,28.4L4.1,28.6L4.0,28.9L3.8,29.2L3.7,29.5L3.7,29.7L3.6,30.0L3.4,30.3L3.3,30.6L3.1,30.8L3.0,31.1L2.9,31.4L2.7,31.7L2.6,31.9L2.5,32.2L2.4,32.5L2.2,32.8L2.1,33.0L2.0,33.3L1.8,33.6L1.7,33.9L1.6,34.1L1.5,34.4L1.3,34.7L1.2,35.0L1.2,35.2L1.0,35.5L0.9,35.8L0.8,36.1L0.6,36.3L0.5,36.6L0.4,36.9L0.3,37.2L0.1,37.4L0.0,37.7L43.9,37.7L43.7,37.4L43.6,37.2L43.5,36.9L43.4,36.6L43.2,36.3L43.1,36.1L43.0,35.8L42.8,35.5L42.8,35.2L42.7,35.0L42.5,34.7L42.4,34.4L42.3,34.1L42.2,33.9L42.0,33.6L41.9,33.3L41.8,33.0L41.6,32.8L41.5,32.5L41.4,32.2L41.3,31.9L41.1,31.7L41.0,31.4L40.9,31.1L40.7,30.8L40.6,30.6L40.4,30.3L40.3,30.0L40.3,29.7L40.2,29.5L40.1,29.2L39.9,28.9L39.8,28.6L39.7,28.4L39.6,28.1L39.4,27.8L39.2,27.5L39.1,27.3L39.0,27.0L38.8,26.7L38.7,26.4L38.6,26.2L38.5,25.9L38.3,25.6L38.2,25.3L38.1,25.1L37.9,24.8L37.9,24.5L37.8,24.2L37.6,24.0L37.5,23.7L37.3,23.4L37.3,23.1L37.1,22.9L37.0,22.6L36.8,22.3L36.7,22.0L36.6,21.8L36.4,21.5L36.2,21.2L36.1,20.9L36.0,20.7L35.9,20.4L35.8,20.1L35.6,19.8L35.5,19.6L35.4,19.3L35.3,19.0L35.2,18.7L35.1,18.4L34.9,18.2L34.8,17.9L34.7,17.6L34.5,17.3L34.4,17.1L34.3,16.8L34.1,16.5L34.0,16.2L33.9,16.0L33.8,15.7L33.6,15.4L33.5,15.1L33.4,14.9L33.2,14.6L33.1,14.3L33.0,14.0L32.9,13.8L32.8,13.5L32.6,13.2L32.5,12.9L32.4,12.7L32.3,12.4L32.2,12.1L32.0,11.8L31.9,11.6L31.7,11.3L31.6,11.0L31.5,10.7L31.3,10.5L31.2,10.2L31.1,9.9L31.0,9.6L30.8,9.4L30.7,9.1L30.6,8.8L30.5,8.5L30.4,8.3L30.3,8.0L30.1,7.7L30.0,7.4L29.8,7.2L29.7,6.9L29.6,6.6L29.4,6.3L29.3,6.1L29.2,5.8L29.0,5.5L28.9,5.2L28.8,5.0L28.7,4.7L28.5,4.4L28.4,4.1L28.3,3.9L28.1,3.6L28.0,3.3L27.8,3.0L27.7,2.8L27.5,2.5L27.2,2.2L26.9,1.9L26.6,1.7L26.3,1.4L25.8,1.1L25.5,0.8L24.9,0.6L24.2,0.3L22.9,0.0Z' fill='%23fff'/%3E%3Cpath d='M21.3,14.0L20.5,14.3L20.1,14.6L19.6,14.9L19.4,15.1L19.1,15.4L19.0,15.7L18.8,16.0L18.6,16.2L18.5,16.5L18.3,16.8L18.3,17.1L18.2,17.3L18.1,17.6L17.9,17.9L17.9,18.2L17.7,18.4L17.6,18.7L17.5,19.0L17.4,19.3L17.3,19.6L17.1,19.8L17.0,20.1L16.9,20.4L16.8,20.7L16.6,20.9L16.5,21.2L16.4,21.5L16.3,21.8L16.2,22.0L16.1,22.3L15.9,22.6L15.9,22.9L15.8,23.1L15.7,23.4L15.6,23.7L15.5,24.0L15.3,24.2L15.2,24.5L15.1,24.8L14.9,25.1L14.8,25.3L14.7,25.6L14.6,25.9L14.5,26.2L14.3,26.4L14.2,26.7L14.1,27.0L14.0,27.3L13.9,27.5L13.8,27.8L13.6,28.1L13.5,28.4L13.4,28.6L13.4,28.9L13.3,29.2L13.2,29.5L13.0,29.7L12.9,30.0L12.8,30.3L12.7,30.6L12.6,30.8L12.4,31.1L12.3,31.4L12.2,31.7L12.1,31.9L12.0,32.2L11.9,32.5L11.7,32.8L11.6,33.0L11.5,33.3L11.4,33.6L11.3,33.9L11.1,34.1L11.0,34.4L17.1,34.7L16.3,35.0L15.7,35.2L15.0,35.5L14.4,35.8L13.7,36.1L13.2,36.3L12.6,36.6L11.9,36.9L11.4,37.2L10.9,37.4L10.5,37.7L33.6,37.7L33.5,37.4L33.3,37.2L33.2,36.9L33.1,36.6L33.0,36.3L33.0,36.1L32.9,35.8L32.8,35.5L32.7,35.2L32.5,35.0L32.4,34.7L11.9,34.4L12.1,34.1L12.2,33.9L12.5,33.6L12.7,33.3L12.9,33.0L13.1,32.8L13.3,32.5L13.5,32.2L13.7,31.9L13.9,31.7L14.2,31.4L14.4,31.1L14.7,30.8L15.0,30.6L15.3,30.3L15.6,30.0L15.9,29.7L16.2,29.5L16.6,29.2L16.9,28.9L17.4,28.6L17.7,28.4L18.2,28.1L18.6,27.8L19.0,27.5L19.5,27.3L20.1,27.0L20.6,26.7L21.1,26.4L21.7,26.2L22.3,25.9L23.0,25.6L23.6,25.3L24.2,25.1L24.7,24.8L25.2,24.5L25.6,24.2L25.9,24.0L26.3,23.7L26.6,23.4L26.9,23.1L27.1,22.9L27.3,22.6L27.5,22.3L27.6,22.0L27.7,21.8L27.8,21.5L27.9,21.2L28.0,20.9L28.0,20.7L28.1,20.4L28.1,20.1L28.1,19.8L28.0,19.6L28.0,19.3L27.9,19.0L27.9,18.7L27.8,18.4L27.7,18.2L27.6,17.9L27.4,17.6L27.3,17.3L27.2,17.1L27.1,16.8L27.0,16.5L26.8,16.2L26.6,16.0L26.4,15.7L26.2,15.4L25.9,15.1L25.7,14.9L25.2,14.6L24.7,14.3L23.9,14.0Z' fill='%230c0c0f'/%3E%3Ctext x='48' y='30' font-family='system-ui,-apple-system,sans-serif' font-weight='800' font-size='26' letter-spacing='-0.3' fill='%23fff'%3Eccesly%3C/text%3E%3C/svg%3E";
 ---
 
-<Layout title="Accesly - Web3 Wallet">
-  <App client:load />
-</Layout>
+<LandingLayout>
+
+  <!-- ===== NAV ===== -->
+  <nav class="nav" id="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo" aria-label="Accesly home">
+        <img src={logoSvg} alt="Accesly" width="120" height="32" />
+      </a>
+      <div class="nav-links" role="list">
+        <a href="#how" class="nav-link" role="listitem">How it works</a>
+        <a href="#features" class="nav-link" role="listitem">Features</a>
+      </div>
+      <div class="nav-actions">
+        <a href="/demo" class="btn btn-ghost">Demo</a>
+        <button class="btn btn-primary open-dev-modal" type="button">Start building</button>
+      </div>
+      <button class="nav-mobile-toggle" type="button" aria-label="Toggle menu" aria-expanded="false">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ===== HERO ===== -->
+  <section class="hero">
+    <div class="hero-content rv">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Built on Stellar
+      </div>
+      <h1 class="hero-title">Onboard users to <span class="grad-text">Stellar</span> in seconds</h1>
+      <p class="hero-sub">Security infrastructure for safe onboarding and account access. Social login, key management, and non-custodial recovery — all in one SDK.</p>
+      <div class="hero-btns">
+        <button class="btn btn-primary btn-lg open-dev-modal" type="button">Start building</button>
+        <a href="/demo" class="btn btn-outline btn-lg">Try demo</a>
+      </div>
+    </div>
+    <div class="hero-phone rv">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-carousel" id="phoneCarousel">
+          <!-- Slide 1: Sign In -->
+          <div class="phone-slide active" data-slide="0">
+            <svg viewBox="0 0 280 520" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Sign in screen">
+              <rect width="280" height="520" rx="20" fill="#0c0c0f"/>
+              <rect x="40" y="60" width="200" height="40" rx="12" fill="#1c1c22"/>
+              <text x="140" y="86" text-anchor="middle" fill="#a1a1aa" font-size="14" font-family="DM Sans, sans-serif">Sign in with Google</text>
+              <circle cx="60" cy="80" r="12" fill="#1c1c22" stroke="#a78bfa" stroke-width="1.5"/>
+              <text x="60" y="84" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="DM Sans, sans-serif">G</text>
+              <rect x="40" y="120" width="200" height="40" rx="12" fill="#1c1c22"/>
+              <text x="140" y="146" text-anchor="middle" fill="#a1a1aa" font-size="14" font-family="DM Sans, sans-serif">Sign in with Email</text>
+              <circle cx="60" cy="140" r="12" fill="#1c1c22" stroke="#34d399" stroke-width="1.5"/>
+              <text x="60" y="144" text-anchor="middle" fill="#34d399" font-size="10" font-family="DM Sans, sans-serif">@</text>
+              <rect x="40" y="200" width="200" height="1" fill="#26262e"/>
+              <text x="140" y="250" text-anchor="middle" fill="#f4f4f5" font-size="18" font-weight="600" font-family="Sora, sans-serif">Welcome</text>
+              <text x="140" y="275" text-anchor="middle" fill="#71717a" font-size="12" font-family="DM Sans, sans-serif">Sign in to access your wallet</text>
+              <rect x="60" y="320" width="160" height="44" rx="22" fill="#a78bfa"/>
+              <text x="140" y="347" text-anchor="middle" fill="#0c0c0f" font-size="14" font-weight="600" font-family="DM Sans, sans-serif">Continue</text>
+              <circle cx="140" cy="440" r="30" fill="none" stroke="#1c1c22" stroke-width="1"/>
+              <path d="M130 440 L140 430 L150 440 M140 430 V455" stroke="#a78bfa" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <!-- Slide 2: Wallet Created -->
+          <div class="phone-slide" data-slide="1">
+            <svg viewBox="0 0 280 520" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Wallet created screen">
+              <rect width="280" height="520" rx="20" fill="#0c0c0f"/>
+              <circle cx="140" cy="160" r="50" fill="#1c1c22" stroke="#34d399" stroke-width="2"/>
+              <path d="M118 160 L133 175 L162 146" stroke="#34d399" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <text x="140" y="240" text-anchor="middle" fill="#f4f4f5" font-size="18" font-weight="600" font-family="Sora, sans-serif">Wallet Created</text>
+              <text x="140" y="265" text-anchor="middle" fill="#71717a" font-size="12" font-family="DM Sans, sans-serif">Your Stellar wallet is ready</text>
+              <rect x="40" y="300" width="200" height="60" rx="12" fill="#1c1c22"/>
+              <text x="60" y="325" fill="#71717a" font-size="10" font-family="DM Sans, sans-serif">Public Key</text>
+              <text x="60" y="345" fill="#a78bfa" font-size="11" font-family="JetBrains Mono, monospace">GAXK...7F2M</text>
+              <rect x="40" y="380" width="200" height="60" rx="12" fill="#1c1c22"/>
+              <text x="60" y="405" fill="#71717a" font-size="10" font-family="DM Sans, sans-serif">Network</text>
+              <text x="60" y="425" fill="#34d399" font-size="12" font-family="DM Sans, sans-serif">Stellar Testnet</text>
+              <circle cx="220" cy="415" r="5" fill="#34d399"/>
+            </svg>
+          </div>
+          <!-- Slide 3: Ready to Transact -->
+          <div class="phone-slide" data-slide="2">
+            <svg viewBox="0 0 280 520" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Ready to transact screen">
+              <rect width="280" height="520" rx="20" fill="#0c0c0f"/>
+              <text x="140" y="80" text-anchor="middle" fill="#f4f4f5" font-size="16" font-weight="600" font-family="Sora, sans-serif">Dashboard</text>
+              <rect x="30" y="100" width="220" height="90" rx="16" fill="#1c1c22"/>
+              <text x="50" y="130" fill="#71717a" font-size="11" font-family="DM Sans, sans-serif">Balance</text>
+              <text x="50" y="160" fill="#f4f4f5" font-size="24" font-weight="700" font-family="Sora, sans-serif">0.00 XLM</text>
+              <text x="50" y="178" fill="#34d399" font-size="11" font-family="DM Sans, sans-serif">Ready to fund</text>
+              <rect x="30" y="210" width="105" height="70" rx="12" fill="#1c1c22"/>
+              <text x="82" y="245" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="600" font-family="DM Sans, sans-serif">Send</text>
+              <path d="M75 255 L82 248 L89 255" stroke="#a78bfa" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              <rect x="145" y="210" width="105" height="70" rx="12" fill="#1c1c22"/>
+              <text x="197" y="245" text-anchor="middle" fill="#34d399" font-size="13" font-weight="600" font-family="DM Sans, sans-serif">Receive</text>
+              <path d="M190 248 L197 255 L204 248" stroke="#34d399" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              <rect x="30" y="300" width="220" height="50" rx="12" fill="#1c1c22"/>
+              <text x="50" y="330" fill="#71717a" font-size="11" font-family="DM Sans, sans-serif">No transactions yet</text>
+              <rect x="30" y="370" width="220" height="50" rx="12" fill="#1c1c22"/>
+              <circle cx="55" cy="395" r="12" fill="#26262e"/>
+              <text x="55" y="399" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="DM Sans, sans-serif">S</text>
+              <text x="80" y="391" fill="#f4f4f5" font-size="12" font-family="DM Sans, sans-serif">Stellar Network</text>
+              <text x="80" y="407" fill="#34d399" font-size="10" font-family="DM Sans, sans-serif">Connected</text>
+            </svg>
+          </div>
+        </div>
+        <div class="phone-dots" role="tablist" aria-label="Carousel slides">
+          <button class="phone-dot active" data-dot="0" role="tab" aria-selected="true" aria-label="Slide 1"></button>
+          <button class="phone-dot" data-dot="1" role="tab" aria-selected="false" aria-label="Slide 2"></button>
+          <button class="phone-dot" data-dot="2" role="tab" aria-selected="false" aria-label="Slide 3"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PARTNERS ===== -->
+  <section class="partners">
+    <p class="partners-label">Trusted by builders on Stellar</p>
+    <div class="marquee" aria-label="Partner logos">
+      <div class="marquee-track">
+        <a class="p-item" href="https://buendiabuilders.com/" target="_blank" rel="noopener noreferrer"><img class="p-logo" src="/partners/bdb.png" alt="Buen Día Builders" width="40" height="40" loading="lazy" /><span class="p-name">Buen Día Builders</span></a>
+        <a class="p-item" href="https://contribute.grantfox.xyz/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/grantfox.jpg" alt="GrantFox" width="40" height="40" loading="lazy" /><span class="p-name">GrantFox</span></a>
+        <a class="p-item" href="https://opportuni.vercel.app/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/opportuni.png" alt="Opportuni" width="40" height="40" loading="lazy" /><span class="p-name">Opportuni</span></a>
+        <a class="p-item" href="https://buendiabuilders.com/" target="_blank" rel="noopener noreferrer"><img class="p-logo" src="/partners/bdb.png" alt="Buen Día Builders" width="40" height="40" loading="lazy" /><span class="p-name">Buen Día Builders</span></a>
+        <a class="p-item" href="https://contribute.grantfox.xyz/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/grantfox.jpg" alt="GrantFox" width="40" height="40" loading="lazy" /><span class="p-name">GrantFox</span></a>
+        <a class="p-item" href="https://opportuni.vercel.app/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/opportuni.png" alt="Opportuni" width="40" height="40" loading="lazy" /><span class="p-name">Opportuni</span></a>
+        <a class="p-item" href="https://buendiabuilders.com/" target="_blank" rel="noopener noreferrer"><img class="p-logo" src="/partners/bdb.png" alt="Buen Día Builders" width="40" height="40" loading="lazy" /><span class="p-name">Buen Día Builders</span></a>
+        <a class="p-item" href="https://contribute.grantfox.xyz/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/grantfox.jpg" alt="GrantFox" width="40" height="40" loading="lazy" /><span class="p-name">GrantFox</span></a>
+        <a class="p-item" href="https://opportuni.vercel.app/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/opportuni.png" alt="Opportuni" width="40" height="40" loading="lazy" /><span class="p-name">Opportuni</span></a>
+        <a class="p-item" href="https://buendiabuilders.com/" target="_blank" rel="noopener noreferrer"><img class="p-logo" src="/partners/bdb.png" alt="Buen Día Builders" width="40" height="40" loading="lazy" /><span class="p-name">Buen Día Builders</span></a>
+        <a class="p-item" href="https://contribute.grantfox.xyz/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/grantfox.jpg" alt="GrantFox" width="40" height="40" loading="lazy" /><span class="p-name">GrantFox</span></a>
+        <a class="p-item" href="https://opportuni.vercel.app/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/opportuni.png" alt="Opportuni" width="40" height="40" loading="lazy" /><span class="p-name">Opportuni</span></a>
+        <a class="p-item" href="https://buendiabuilders.com/" target="_blank" rel="noopener noreferrer"><img class="p-logo" src="/partners/bdb.png" alt="Buen Día Builders" width="40" height="40" loading="lazy" /><span class="p-name">Buen Día Builders</span></a>
+        <a class="p-item" href="https://contribute.grantfox.xyz/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/grantfox.jpg" alt="GrantFox" width="40" height="40" loading="lazy" /><span class="p-name">GrantFox</span></a>
+        <a class="p-item" href="https://opportuni.vercel.app/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/opportuni.png" alt="Opportuni" width="40" height="40" loading="lazy" /><span class="p-name">Opportuni</span></a>
+        <a class="p-item" href="https://buendiabuilders.com/" target="_blank" rel="noopener noreferrer"><img class="p-logo" src="/partners/bdb.png" alt="Buen Día Builders" width="40" height="40" loading="lazy" /><span class="p-name">Buen Día Builders</span></a>
+        <a class="p-item" href="https://contribute.grantfox.xyz/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/grantfox.jpg" alt="GrantFox" width="40" height="40" loading="lazy" /><span class="p-name">GrantFox</span></a>
+        <a class="p-item" href="https://opportuni.vercel.app/" target="_blank" rel="noopener noreferrer"><img class="p-logo p-logo-round" src="/partners/opportuni.png" alt="Opportuni" width="40" height="40" loading="lazy" /><span class="p-name">Opportuni</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HOW IT WORKS ===== -->
+  <section class="how" id="how">
+    <div class="section-header rv">
+      <span class="section-tag">Simple integration</span>
+      <h2 class="section-title">How it works</h2>
+      <p class="section-sub">Three steps to onboard your users onto Stellar</p>
+    </div>
+    <div class="how-grid">
+      <div class="how-card rv">
+        <span class="how-num">01</span>
+        <div class="how-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="4" y="4" width="24" height="24" rx="6" stroke="#a78bfa" stroke-width="2"/>
+            <path d="M12 16h8M16 12v8" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3 class="how-card-title">Install the SDK</h3>
+        <p class="how-card-text">Add Accesly to your project with a single npm install. Works with any JavaScript framework.</p>
+      </div>
+      <div class="how-card rv">
+        <span class="how-num">02</span>
+        <div class="how-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="12" r="5" stroke="#34d399" stroke-width="2"/>
+            <path d="M8 26c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke="#34d399" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3 class="how-card-title">Authenticate users</h3>
+        <p class="how-card-text">Users sign in with Google or email. No seed phrases, no browser extensions required.</p>
+      </div>
+      <div class="how-card rv">
+        <span class="how-num">03</span>
+        <div class="how-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="6" y="8" width="20" height="16" rx="4" stroke="#a78bfa" stroke-width="2"/>
+            <path d="M22 16h2" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="24" cy="16" r="2" fill="#34d399"/>
+          </svg>
+        </div>
+        <h3 class="how-card-title">Wallet is ready</h3>
+        <p class="how-card-text">A Stellar wallet is automatically created and secured. Users can transact immediately.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FEATURES ===== -->
+  <section class="features" id="features">
+    <div class="section-header rv">
+      <span class="section-tag">Developer-first</span>
+      <h2 class="section-title">Built for builders</h2>
+      <p class="section-sub">Everything you need to integrate Stellar wallets into your application</p>
+    </div>
+    <div class="features-grid">
+      <!-- Full-width code card -->
+      <div class="feat-card feat-code-card rv">
+        <div class="feat-code-header">
+          <div class="feat-code-dots">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+          </div>
+          <span class="feat-code-label">Quick start</span>
+        </div>
+        <pre class="feat-code"><code><span class="c-kw">import</span> <span class="c-fn">Accesly</span> <span class="c-kw">from</span> <span class="c-str">'accesly'</span>;
+
+<span class="c-kw">const</span> accesly = <span class="c-kw">new</span> <span class="c-fn">Accesly</span>({'{'}
+  <span class="c-prop">network</span>: <span class="c-str">'testnet'</span>,
+  <span class="c-prop">projectId</span>: <span class="c-str">'your-project-id'</span>
+{'}'});
+
+<span class="c-cm">// Authenticate and create wallet</span>
+<span class="c-kw">const</span> wallet = <span class="c-kw">await</span> accesly.<span class="c-fn">connect</span>();
+<span class="c-fn">console</span>.<span class="c-fn">log</span>(wallet.<span class="c-prop">publicKey</span>);</code></pre>
+      </div>
+
+      <!-- Feature card 1 -->
+      <div class="feat-card rv">
+        <div class="feat-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M14 3L25 9v10l-11 6L3 19V9l11-6z" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M14 25V15M14 15l11-6M14 15L3 9" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3 class="feat-title">Non-custodial keys</h3>
+        <p class="feat-text">Users own their keys. Accesly never has access to private keys — they stay encrypted on-device.</p>
+      </div>
+
+      <!-- Feature card 2 -->
+      <div class="feat-card rv">
+        <div class="feat-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect x="3" y="7" width="22" height="14" rx="4" stroke="#34d399" stroke-width="2"/>
+            <circle cx="14" cy="14" r="3" stroke="#34d399" stroke-width="2"/>
+            <path d="M8 14h3M17 14h3" stroke="#34d399" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3 class="feat-title">Social login</h3>
+        <p class="feat-text">Google OAuth and email sign-in. No seed phrases or browser extensions for your users.</p>
+      </div>
+
+      <!-- Feature card 3 -->
+      <div class="feat-card rv">
+        <div class="feat-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M14 3v22M3 14h22" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="14" cy="14" r="10" stroke="#a78bfa" stroke-width="2"/>
+            <path d="M4 10h20M4 18h20" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+          </svg>
+        </div>
+        <h3 class="feat-title">Multi-network</h3>
+        <p class="feat-text">Deploy on Stellar mainnet or testnet. Switch networks with a single configuration change.</p>
+      </div>
+
+      <!-- Feature card 4 -->
+      <div class="feat-card rv">
+        <div class="feat-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M5 14l6 6L23 8" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="2" y="2" width="24" height="24" rx="6" stroke="#34d399" stroke-width="2"/>
+          </svg>
+        </div>
+        <h3 class="feat-title">Account recovery</h3>
+        <p class="feat-text">Built-in social recovery lets users regain access through their verified identity. No seed phrases to lose.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TRACTION ===== -->
+  <section class="traction">
+    <div class="section-header rv">
+      <span class="section-tag">Traction</span>
+      <h2 class="section-title">Growing on Stellar</h2>
+      <p class="section-sub">Key metrics and milestones</p>
+    </div>
+    <div class="traction-content">
+      <div class="traction-kpis">
+        <div class="kpi-card rv">
+          <span class="kpi-value" data-count="0">--</span>
+          <span class="kpi-label">Wallets created</span>
+          <span class="kpi-note">Awaiting data</span>
+        </div>
+        <div class="kpi-card rv">
+          <span class="kpi-value">3s</span>
+          <span class="kpi-label">Onboarding time</span>
+          <span class="kpi-note">Average user flow</span>
+        </div>
+        <div class="kpi-card rv">
+          <span class="kpi-value" data-count="0">--</span>
+          <span class="kpi-label">Transactions</span>
+          <span class="kpi-note">Awaiting data</span>
+        </div>
+        <div class="kpi-card rv">
+          <span class="kpi-value" data-count="0">--</span>
+          <span class="kpi-label">Active integrations</span>
+          <span class="kpi-note">Awaiting data</span>
+        </div>
+      </div>
+      <div class="traction-chart rv">
+        <div class="chart-header">
+          <span class="chart-title">Growth</span>
+          <span class="chart-period">Last 6 months</span>
+        </div>
+        <div class="chart-area" id="tractionChart" aria-label="Growth chart placeholder">
+          <!-- SVG chart injected by JS -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA ===== -->
+  <section class="cta rv">
+    <div class="cta-box">
+      <div class="cta-glow"></div>
+      <h2 class="cta-title">Start building on <span class="grad-text">Stellar</span></h2>
+      <p class="cta-sub">Integrate secure wallet onboarding into your app in minutes. Free to start, no credit card required.</p>
+      <div class="cta-btns">
+        <button class="btn btn-primary btn-lg open-dev-modal" type="button">Start building</button>
+        <a href="/demo" class="btn btn-outline btn-lg">Try demo</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <!-- Brand -->
+        <div class="footer-col footer-brand">
+          <img src={logoSvg} alt="Accesly" width="100" height="27" class="footer-logo" />
+          <p class="footer-desc">Security infrastructure for safe onboarding and account access on Stellar.</p>
+        </div>
+        <!-- Product -->
+        <div class="footer-col">
+          <h4 class="footer-heading">Product</h4>
+          <ul class="footer-list">
+            <li><a href="#">Home</a></li>
+            <li><a href="#how">How it works</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="/demo">Demo</a></li>
+          </ul>
+        </div>
+        <!-- Developers -->
+        <div class="footer-col">
+          <h4 class="footer-heading">Developers</h4>
+          <ul class="footer-list">
+            <li><a href="https://www.npmjs.com/package/accesly" target="_blank" rel="noopener noreferrer">npm Package</a></li>
+            <li><a href="https://github.com/daniellagart4-sys/AppExampleSDKAccesly" target="_blank" rel="noopener noreferrer">Example App</a></li>
+            <li><a href="https://accesly.vercel.app/developers" target="_blank" rel="noopener noreferrer">Developer Portal</a></li>
+          </ul>
+        </div>
+        <!-- Connect -->
+        <div class="footer-col">
+          <h4 class="footer-heading">Connect</h4>
+          <ul class="footer-list">
+            <li>
+              <a href="https://x.com/accesly" target="_blank" rel="noopener noreferrer" aria-label="Follow us on X (Twitter)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                X / Twitter
+              </a>
+            </li>
+            <li>
+              <a href="https://t.me/+btpRC-Bo02QxYWYx" target="_blank" rel="noopener noreferrer" aria-label="Join us on Telegram">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                Telegram
+              </a>
+            </li>
+            <li>
+              <a href="mailto:contact@accesly.dev" aria-label="Contact us by email">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4l-10 8L2 4"/></svg>
+                Contact
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span class="footer-copy">&copy; 2025 Accesly. All rights reserved.</span>
+        <span class="footer-stellar">Built on Stellar</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== DEVELOPERS MODAL ===== -->
+  <div class="dev-modal" id="devModal" role="dialog" aria-modal="true" aria-labelledby="devModalTitle" style="display:none;">
+    <div class="dev-modal-backdrop"></div>
+    <div class="dev-modal-content">
+      <button class="dev-modal-close" type="button" aria-label="Close modal">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <div class="dev-modal-header">
+        <h2 id="devModalTitle" class="dev-modal-title">Developer Resources</h2>
+        <p class="dev-modal-sub">Everything you need to start building with Accesly</p>
+      </div>
+      <div class="dev-modal-grid">
+        <!-- Developer Portal -->
+        <a href="https://accesly.vercel.app/developers" class="dev-modal-card" target="_blank" rel="noopener noreferrer">
+          <div class="dev-modal-card-icon">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="4" y="6" width="24" height="20" rx="4" stroke="#a78bfa" stroke-width="2"/>
+              <path d="M12 14l-3 3 3 3M20 14l3 3-3 3M15 22l2-12" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="dev-modal-card-title">Developer Portal</h3>
+          <p class="dev-modal-card-text">Documentation, guides, and API reference</p>
+          <span class="dev-modal-card-badge live">Live</span>
+        </a>
+        <!-- Example App -->
+        <a href="https://github.com/daniellagart4-sys/AppExampleSDKAccesly" class="dev-modal-card" target="_blank" rel="noopener noreferrer">
+          <div class="dev-modal-card-icon">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="6" y="4" width="20" height="24" rx="4" stroke="#34d399" stroke-width="2"/>
+              <path d="M12 12h8M12 16h8M12 20h5" stroke="#34d399" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="dev-modal-card-title">Example App</h3>
+          <p class="dev-modal-card-text">Full working example with SDK integration</p>
+          <span class="dev-modal-card-badge live">Live</span>
+        </a>
+        <!-- npm Library -->
+        <a href="https://www.npmjs.com/package/accesly" class="dev-modal-card" target="_blank" rel="noopener noreferrer">
+          <div class="dev-modal-card-icon">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="4" y="8" width="24" height="16" rx="2" stroke="#a78bfa" stroke-width="2"/>
+              <path d="M10 16v4M16 12v8M22 14v6" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="dev-modal-card-title">npm Library</h3>
+          <p class="dev-modal-card-text">Install accesly from npm and start integrating</p>
+          <span class="dev-modal-card-badge live">Live</span>
+        </a>
+        <!-- Video Tutorial -->
+        <div class="dev-modal-card dev-modal-card-video">
+          <h3 class="dev-modal-card-title">Video Tutorial</h3>
+          <div class="dev-modal-video-wrap">
+            <iframe width="560" height="315" src="https://www.youtube.com/embed/wN8_uxS2vNg?si=w52-0_WrFTwpxA4-" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          </div>
+          <span class="dev-modal-card-badge live">Live</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</LandingLayout>
 
 <style is:global>
-  /* Spinner animation used by loading states in React components */
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+/* ========================================
+   NAV
+   ======================================== */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 0 24px;
+  transition: background 0.3s, border-color 0.3s, backdrop-filter 0.3s;
+  border-bottom: 1px solid transparent;
+}
+.nav.s {
+  background: rgba(12, 12, 15, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom-color: var(--border);
+}
+.nav-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+.nav-logo img {
+  height: 28px;
+  width: auto;
+}
+.nav-links {
+  display: flex;
+  gap: 32px;
+}
+.nav-link {
+  font-size: 14px;
+  color: var(--tx2);
+  transition: color 0.2s;
+  font-weight: 500;
+}
+.nav-link:hover {
+  color: var(--tx);
+}
+.nav-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.nav-mobile-toggle {
+  display: none;
+  background: none;
+  color: var(--tx);
+  padding: 4px;
+}
 
-  /* Modal/panel fade-in */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
+/* ========================================
+   BUTTONS
+   ======================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 10px 20px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--lav);
+  color: #0c0c0f;
+}
+.btn-primary:hover {
+  background: var(--lav2);
+  transform: translateY(-1px);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--tx2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover {
+  color: var(--tx);
+  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--glass);
+}
+.btn-outline {
+  background: transparent;
+  color: var(--tx);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover {
+  border-color: var(--lav);
+  color: var(--lav);
+  background: rgba(167, 139, 250, 0.05);
+}
+.btn-lg {
+  padding: 14px 28px;
+  font-size: 15px;
+  border-radius: 12px;
+}
 
-  /* Modal/panel slide-up entrance */
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
+/* ========================================
+   GRADIENT TEXT
+   ======================================== */
+.grad-text {
+  background: linear-gradient(135deg, var(--lav), var(--mint));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ========================================
+   HERO
+   ======================================== */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 60px;
+  padding: 100px 24px 60px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.hero-content {
+  flex: 1;
+  max-width: 520px;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--lav);
+  background: rgba(167, 139, 250, 0.08);
+  border: 1px solid rgba(167, 139, 250, 0.15);
+  border-radius: 100px;
+  padding: 6px 16px;
+  margin-bottom: 24px;
+  font-weight: 500;
+}
+.hero-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--lav);
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.hero-title {
+  font-family: 'Sora', sans-serif;
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 20px;
+}
+.hero-sub {
+  font-size: 17px;
+  color: var(--tx2);
+  line-height: 1.6;
+  margin-bottom: 32px;
+  max-width: 460px;
+}
+.hero-btns {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.hero-phone {
+  flex-shrink: 0;
+}
+
+/* ========================================
+   PHONE CAROUSEL
+   ======================================== */
+.phone-frame {
+  width: 280px;
+  height: 560px;
+  background: var(--bg2);
+  border-radius: 36px;
+  border: 2px solid var(--bg4);
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(167, 139, 250, 0.06);
+}
+.phone-notch {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 24px;
+  background: var(--bg);
+  border-radius: 0 0 16px 16px;
+  z-index: 2;
+}
+.phone-carousel {
+  position: relative;
+  width: 100%;
+  height: 520px;
+}
+.phone-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-slide.active {
+  opacity: 1;
+}
+.phone-slide svg {
+  width: 100%;
+  height: 100%;
+}
+.phone-dots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 3;
+}
+.phone-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bg4);
+  border: none;
+  padding: 0;
+  transition: all 0.3s;
+}
+.phone-dot.active {
+  background: var(--lav);
+  width: 24px;
+  border-radius: 4px;
+}
+
+/* ========================================
+   PARTNERS MARQUEE
+   ======================================== */
+.partners {
+  padding: 40px 24px 60px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.partners-label {
+  text-align: center;
+  font-size: 13px;
+  color: var(--tx3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 24px;
+  font-weight: 500;
+}
+.marquee {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 20s linear infinite;
+}
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-100% / 6)); }
+}
+.p-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-right: 60px;
+}
+.p-logo {
+  height: 40px;
+  width: auto;
+  flex-shrink: 0;
+  filter: grayscale(1) brightness(1.5);
+  transition: filter 0.3s;
+}
+.p-logo.p-logo-round {
+  width: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+a.p-item {
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.2s;
+}
+a.p-item:hover .p-logo {
+  filter: grayscale(0) brightness(1);
+}
+.p-name {
+  font-size: 15px;
+  color: var(--tx2);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ========================================
+   SECTION HEADERS
+   ======================================== */
+.section-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+.section-tag {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--lav);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.section-title {
+  font-family: 'Sora', sans-serif;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+.section-sub {
+  font-size: 16px;
+  color: var(--tx2);
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ========================================
+   HOW IT WORKS
+   ======================================== */
+.how {
+  padding: 80px 24px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.how-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 32px;
+  position: relative;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.how-card:hover {
+  border-color: rgba(167, 139, 250, 0.2);
+  transform: translateY(-2px);
+}
+.how-num {
+  font-family: 'Sora', sans-serif;
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--bg3);
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  line-height: 1;
+}
+.how-icon {
+  margin-bottom: 20px;
+}
+.how-card-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.how-card-text {
+  font-size: 14px;
+  color: var(--tx2);
+  line-height: 1.6;
+}
+
+/* ========================================
+   FEATURES
+   ======================================== */
+.features {
+  padding: 80px 24px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+.feat-code-card {
+  grid-column: 1 / -1;
+}
+.feat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 28px;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.feat-card:hover {
+  border-color: rgba(167, 139, 250, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Code card */
+.feat-code-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.feat-code-dots {
+  display: flex;
+  gap: 6px;
+}
+.feat-code-dots .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.feat-code-dots .dot.red { background: #ef4444; }
+.feat-code-dots .dot.yellow { background: #eab308; }
+.feat-code-dots .dot.green { background: #22c55e; }
+.feat-code-label {
+  font-size: 12px;
+  color: var(--tx3);
+  font-weight: 500;
+}
+.feat-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-x: auto;
+  color: var(--tx2);
+}
+.feat-code code {
+  font-family: inherit;
+}
+.c-kw { color: var(--lav); }
+.c-fn { color: var(--mint); }
+.c-str { color: #fbbf24; }
+.c-prop { color: var(--lav2); }
+.c-cm { color: var(--tx3); font-style: italic; }
+
+/* Feature icon + text cards */
+.feat-icon {
+  margin-bottom: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--bg3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.feat-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.feat-text {
+  font-size: 14px;
+  color: var(--tx2);
+  line-height: 1.6;
+}
+
+/* ========================================
+   TRACTION
+   ======================================== */
+.traction {
+  padding: 80px 24px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.traction-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.traction-kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.kpi-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 24px;
+  text-align: center;
+}
+.kpi-value {
+  display: block;
+  font-family: 'Sora', sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--tx);
+  letter-spacing: -0.02em;
+}
+.kpi-label {
+  display: block;
+  font-size: 13px;
+  color: var(--tx2);
+  margin-top: 4px;
+  font-weight: 500;
+}
+.kpi-note {
+  display: block;
+  font-size: 11px;
+  color: var(--tx3);
+  margin-top: 4px;
+}
+.traction-chart {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.chart-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+.chart-period {
+  font-size: 12px;
+  color: var(--tx3);
+}
+.chart-area {
+  flex: 1;
+  min-height: 180px;
+  display: flex;
+  align-items: flex-end;
+}
+.chart-area svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ========================================
+   CTA
+   ======================================== */
+.cta {
+  padding: 80px 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.cta-box {
+  position: relative;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 60px 40px;
+  text-align: center;
+  overflow: hidden;
+}
+.cta-glow {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 200px;
+  background: radial-gradient(ellipse, rgba(167, 139, 250, 0.15), transparent 70%);
+  pointer-events: none;
+}
+.cta-title {
+  font-family: 'Sora', sans-serif;
+  font-size: clamp(24px, 3.5vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+  position: relative;
+}
+.cta-sub {
+  font-size: 16px;
+  color: var(--tx2);
+  line-height: 1.6;
+  margin-bottom: 32px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+}
+.cta-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+/* ========================================
+   FOOTER
+   ======================================== */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 60px 24px 32px;
+}
+.footer-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+.footer-logo {
+  height: 24px;
+  width: auto;
+  margin-bottom: 12px;
+}
+.footer-desc {
+  font-size: 13px;
+  color: var(--tx3);
+  line-height: 1.6;
+  max-width: 280px;
+}
+.footer-heading {
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tx2);
+  margin-bottom: 16px;
+}
+.footer-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.footer-list a {
+  font-size: 14px;
+  color: var(--tx3);
+  transition: color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.footer-list a:hover {
+  color: var(--tx);
+}
+.footer-list svg {
+  flex-shrink: 0;
+}
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.footer-copy {
+  font-size: 12px;
+  color: var(--tx3);
+}
+.footer-stellar {
+  font-size: 12px;
+  color: var(--tx3);
+}
+
+/* ========================================
+   DEVELOPERS MODAL
+   ======================================== */
+.dev-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.dev-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.dev-modal-content {
+  position: relative;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  max-width: 640px;
+  width: 100%;
+  padding: 40px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modal-in 0.3s ease;
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.dev-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tx2);
+  transition: color 0.2s, border-color 0.2s;
+}
+.dev-modal-close:hover {
+  color: var(--tx);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.dev-modal-header {
+  margin-bottom: 28px;
+}
+.dev-modal-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.dev-modal-sub {
+  font-size: 14px;
+  color: var(--tx2);
+}
+.dev-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.dev-modal-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  transition: border-color 0.3s, transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+a.dev-modal-card:hover {
+  border-color: rgba(167, 139, 250, 0.3);
+  transform: translateY(-2px);
+}
+.dev-modal-card-disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.dev-modal-card-video {
+  grid-column: 1 / -1;
+}
+.dev-modal-video-wrap {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.dev-modal-video-wrap iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 10px;
+}
+.dev-modal-card-icon {
+  margin-bottom: 4px;
+}
+.dev-modal-card-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+.dev-modal-card-text {
+  font-size: 13px;
+  color: var(--tx2);
+  line-height: 1.5;
+}
+.dev-modal-card-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 100px;
+  width: fit-content;
+  margin-top: auto;
+}
+.dev-modal-card-badge.live {
+  background: rgba(52, 211, 153, 0.1);
+  color: var(--mint);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+.dev-modal-card-badge.soon {
+  background: rgba(113, 113, 122, 0.1);
+  color: var(--tx3);
+  border: 1px solid rgba(113, 113, 122, 0.2);
+}
+
+/* ========================================
+   SCROLL REVEAL
+   ======================================== */
+.rv {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.rv.vis {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 900px) {
+  .hero {
+    flex-direction: column;
+    text-align: center;
+    gap: 40px;
+    padding-top: 80px;
+  }
+  .hero-content {
+    max-width: 100%;
+  }
+  .hero-sub {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .hero-btns {
+    justify-content: center;
+  }
+  .how-grid {
+    grid-template-columns: 1fr;
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+  .feat-code-card {
+    grid-column: 1;
+  }
+  .traction-content {
+    grid-template-columns: 1fr;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .nav-links {
+    display: none;
+  }
+  .nav-actions {
+    display: none;
+  }
+  .nav-mobile-toggle {
+    display: flex;
+  }
+  .nav.mobile-open .nav-links,
+  .nav.mobile-open .nav-actions {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    gap: 12px;
+  }
+  .nav.mobile-open .nav-links {
+    top: 64px;
+    padding-bottom: 0;
+  }
+  .nav.mobile-open .nav-actions {
+    top: auto;
+  }
+  .hero-title {
+    font-size: 28px;
+  }
+  .phone-frame {
+    width: 240px;
+    height: 480px;
+  }
+  .phone-carousel {
+    height: 440px;
+  }
+  .traction-kpis {
+    grid-template-columns: 1fr;
+  }
+  .cta-box {
+    padding: 40px 24px;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+  .footer-brand {
+    grid-column: 1;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+  .dev-modal-content {
+    padding: 24px;
+  }
+  .dev-modal-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
+
+<script>
+  /* ========================================
+     NAV SCROLL EFFECT
+     ======================================== */
+  const nav = document.getElementById('nav');
+  function updateNav() {
+    if (window.scrollY > 50) {
+      nav?.classList.add('s');
+    } else {
+      nav?.classList.remove('s');
+    }
+  }
+  window.addEventListener('scroll', updateNav, { passive: true });
+  updateNav();
+
+  /* Mobile toggle */
+  const mobileToggle = document.querySelector('.nav-mobile-toggle');
+  mobileToggle?.addEventListener('click', () => {
+    nav?.classList.toggle('mobile-open');
+    const expanded = mobileToggle.getAttribute('aria-expanded') === 'true';
+    mobileToggle.setAttribute('aria-expanded', String(!expanded));
+  });
+
+  /* ========================================
+     SCROLL REVEAL (IntersectionObserver)
+     ======================================== */
+  const revealEls = document.querySelectorAll('.rv');
+  if (revealEls.length > 0) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('vis');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
+    );
+    revealEls.forEach((el) => observer.observe(el));
+  }
+
+  /* ========================================
+     PHONE CAROUSEL
+     ======================================== */
+  const slides = document.querySelectorAll('.phone-slide');
+  const dots = document.querySelectorAll('.phone-dot');
+  let currentSlide = 0;
+  let carouselInterval: ReturnType<typeof setInterval> | null = null;
+
+  function goToSlide(index: number) {
+    slides.forEach((s) => s.classList.remove('active'));
+    dots.forEach((d) => {
+      d.classList.remove('active');
+      d.setAttribute('aria-selected', 'false');
+    });
+    slides[index]?.classList.add('active');
+    dots[index]?.classList.add('active');
+    dots[index]?.setAttribute('aria-selected', 'true');
+    currentSlide = index;
+  }
+
+  function nextSlide() {
+    goToSlide((currentSlide + 1) % slides.length);
+  }
+
+  function startCarousel() {
+    carouselInterval = setInterval(nextSlide, 3000);
+  }
+
+  function resetCarousel() {
+    if (carouselInterval) clearInterval(carouselInterval);
+    startCarousel();
+  }
+
+  dots.forEach((dot) => {
+    dot.addEventListener('click', () => {
+      const index = parseInt(dot.getAttribute('data-dot') || '0', 10);
+      goToSlide(index);
+      resetCarousel();
+    });
+  });
+
+  startCarousel();
+
+  /* ========================================
+     COUNTER ANIMATION
+     ======================================== */
+  const counters = document.querySelectorAll('[data-count]');
+  if (counters.length > 0) {
+    const counterObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            const target = parseInt(el.getAttribute('data-count') || '0', 10);
+            if (target === 0) {
+              el.textContent = '--';
+            } else {
+              let current = 0;
+              const increment = Math.max(1, Math.floor(target / 40));
+              const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                  current = target;
+                  clearInterval(timer);
+                }
+                el.textContent = current.toLocaleString();
+              }, 30);
+            }
+            counterObserver.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+    counters.forEach((c) => counterObserver.observe(c));
+  }
+
+  /* ========================================
+     TRACTION CHART
+     ======================================== */
+  const chartArea = document.getElementById('tractionChart');
+  if (chartArea) {
+    const w = 400;
+    const h = 180;
+    const months = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'];
+    const values = [10, 25, 35, 50, 70, 90];
+    const maxVal = 100;
+    const padding = 30;
+    const chartW = w - padding * 2;
+    const chartH = h - padding * 2;
+
+    let pathD = '';
+    let areaD = `M${padding},${h - padding}`;
+    const points: string[] = [];
+
+    values.forEach((v, i) => {
+      const x = padding + (i / (values.length - 1)) * chartW;
+      const y = h - padding - (v / maxVal) * chartH;
+      if (i === 0) {
+        pathD += `M${x},${y}`;
+      } else {
+        pathD += ` L${x},${y}`;
+      }
+      areaD += ` L${x},${y}`;
+      points.push(`<circle cx="${x}" cy="${y}" r="3" fill="var(--lav)" />`);
+    });
+
+    areaD += ` L${padding + chartW},${h - padding} Z`;
+
+    const gridLines = [0, 25, 50, 75, 100].map((v) => {
+      const y = h - padding - (v / maxVal) * chartH;
+      return `<line x1="${padding}" y1="${y}" x2="${w - padding}" y2="${y}" stroke="var(--border)" stroke-width="1"/>`;
+    }).join('');
+
+    const labels = months.map((m, i) => {
+      const x = padding + (i / (months.length - 1)) * chartW;
+      return `<text x="${x}" y="${h - 6}" text-anchor="middle" fill="var(--tx3)" font-size="10" font-family="DM Sans, sans-serif">${m}</text>`;
+    }).join('');
+
+    chartArea.innerHTML = `
+      <svg viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Growth chart showing upward trend over 6 months">
+        ${gridLines}
+        <defs>
+          <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--lav)" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="var(--lav)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="${areaD}" fill="url(#chartGrad)"/>
+        <path d="${pathD}" stroke="var(--lav)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        ${points.join('')}
+        ${labels}
+      </svg>
+    `;
+  }
+
+  /* ========================================
+     DEVELOPERS MODAL
+     ======================================== */
+  const devModal = document.getElementById('devModal');
+  const openBtns = document.querySelectorAll('.open-dev-modal');
+  const closeBtn = document.querySelector('.dev-modal-close');
+  const backdrop = document.querySelector('.dev-modal-backdrop');
+
+  function openModal() {
+    if (devModal) {
+      devModal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      // Focus the close button for accessibility
+      (closeBtn as HTMLElement)?.focus();
+    }
+  }
+
+  function closeModal() {
+    if (devModal) {
+      devModal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  }
+
+  openBtns.forEach((btn) => {
+    btn.addEventListener('click', openModal);
+  });
+
+  closeBtn?.addEventListener('click', closeModal);
+  backdrop?.addEventListener('click', closeModal);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && devModal?.style.display === 'flex') {
+      closeModal();
+    }
+  });
+</script>
