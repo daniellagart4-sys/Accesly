@@ -284,9 +284,9 @@ const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
     <div class="traction-content">
       <div class="traction-kpis">
         <div class="kpi-card rv">
-          <span class="kpi-value" data-count="0">--</span>
+          <span class="kpi-value" id="kpi-wallets" data-count="0">--</span>
           <span class="kpi-label">Wallets created</span>
-          <span class="kpi-note">Awaiting data</span>
+          <span class="kpi-note">Real-time from Stellar</span>
         </div>
         <div class="kpi-card rv">
           <span class="kpi-value">3s</span>
@@ -294,20 +294,20 @@ const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
           <span class="kpi-note">Average user flow</span>
         </div>
         <div class="kpi-card rv">
-          <span class="kpi-value" data-count="0">--</span>
-          <span class="kpi-label">Transactions</span>
-          <span class="kpi-note">Awaiting data</span>
+          <span class="kpi-value" data-count="396">396</span>
+          <span class="kpi-label">npm Downloads</span>
+          <span class="kpi-note">First week</span>
         </div>
         <div class="kpi-card rv">
-          <span class="kpi-value" data-count="0">--</span>
+          <span class="kpi-value" id="kpi-integrations" data-count="0">--</span>
           <span class="kpi-label">Active integrations</span>
-          <span class="kpi-note">Awaiting data</span>
+          <span class="kpi-note">Developer projects</span>
         </div>
       </div>
       <div class="traction-chart rv">
         <div class="chart-header">
-          <span class="chart-title">Growth</span>
-          <span class="chart-period">Last 6 months</span>
+          <span class="chart-title">Wallets Created</span>
+          <span class="chart-period">Real-time</span>
         </div>
         <div class="chart-area" id="tractionChart" aria-label="Growth chart placeholder">
           <!-- SVG chart injected by JS -->
@@ -1509,6 +1509,22 @@ a.dev-modal-card:hover {
   startCarousel();
 
   /* ========================================
+     FETCH LIVE STATS
+     ======================================== */
+  let timeline: { date: string; count: number }[] = [];
+  try {
+    const res = await fetch('/api/stats');
+    if (res.ok) {
+      const stats = await res.json();
+      const walletsEl = document.getElementById('kpi-wallets');
+      const integrationsEl = document.getElementById('kpi-integrations');
+      if (walletsEl) walletsEl.setAttribute('data-count', String(stats.wallets));
+      if (integrationsEl) integrationsEl.setAttribute('data-count', String(stats.integrations));
+      timeline = stats.timeline ?? [];
+    }
+  } catch (_) {}
+
+  /* ========================================
      COUNTER ANIMATION
      ======================================== */
   const counters = document.querySelectorAll('[data-count]');
@@ -1549,43 +1565,54 @@ a.dev-modal-card:hover {
   if (chartArea) {
     const w = 400;
     const h = 180;
-    const months = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'];
-    const values = [10, 25, 35, 50, 70, 90];
-    const maxVal = 100;
     const padding = 30;
     const chartW = w - padding * 2;
     const chartH = h - padding * 2;
+
+    // Use real timeline data or fallback
+    const hasData = timeline.length >= 2;
+    const values = hasData ? timeline.map((t) => t.count) : [0];
+    const labels = hasData
+      ? timeline.map((t) => {
+          const d = new Date(t.date + 'T00:00:00');
+          return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+        })
+      : ['No data'];
+    const maxVal = Math.max(...values, 1);
+
+    // Pick up to 8 label positions to avoid crowding
+    const maxLabels = 8;
+    const step = Math.max(1, Math.floor(labels.length / maxLabels));
 
     let pathD = '';
     let areaD = `M${padding},${h - padding}`;
     const points: string[] = [];
 
     values.forEach((v, i) => {
-      const x = padding + (i / (values.length - 1)) * chartW;
+      const x = padding + (values.length === 1 ? chartW / 2 : (i / (values.length - 1)) * chartW);
       const y = h - padding - (v / maxVal) * chartH;
-      if (i === 0) {
-        pathD += `M${x},${y}`;
-      } else {
-        pathD += ` L${x},${y}`;
-      }
+      if (i === 0) pathD += `M${x},${y}`;
+      else pathD += ` L${x},${y}`;
       areaD += ` L${x},${y}`;
       points.push(`<circle cx="${x}" cy="${y}" r="3" fill="var(--lav)" />`);
     });
 
-    areaD += ` L${padding + chartW},${h - padding} Z`;
+    areaD += ` L${padding + (values.length === 1 ? chartW / 2 : chartW)},${h - padding} Z`;
 
-    const gridLines = [0, 25, 50, 75, 100].map((v) => {
-      const y = h - padding - (v / maxVal) * chartH;
+    const gridSteps = [0, 0.25, 0.5, 0.75, 1];
+    const gridLines = gridSteps.map((pct) => {
+      const y = h - padding - pct * chartH;
       return `<line x1="${padding}" y1="${y}" x2="${w - padding}" y2="${y}" stroke="var(--border)" stroke-width="1"/>`;
     }).join('');
 
-    const labels = months.map((m, i) => {
-      const x = padding + (i / (months.length - 1)) * chartW;
+    const labelsSvg = labels.map((m, i) => {
+      if (i % step !== 0 && i !== labels.length - 1) return '';
+      const x = padding + (labels.length === 1 ? chartW / 2 : (i / (labels.length - 1)) * chartW);
       return `<text x="${x}" y="${h - 6}" text-anchor="middle" fill="var(--tx3)" font-size="10" font-family="DM Sans, sans-serif">${m}</text>`;
     }).join('');
 
     chartArea.innerHTML = `
-      <svg viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Growth chart showing upward trend over 6 months">
+      <svg viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Wallets created over time">
         ${gridLines}
         <defs>
           <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1596,7 +1623,7 @@ a.dev-modal-card:hover {
         <path d="${areaD}" fill="url(#chartGrad)"/>
         <path d="${pathD}" stroke="var(--lav)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         ${points.join('')}
-        ${labels}
+        ${labelsSvg}
       </svg>
     `;
   }
