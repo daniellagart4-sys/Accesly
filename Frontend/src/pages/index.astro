@@ -13,8 +13,8 @@ const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
         <img src={logoSvg} alt="Accesly" width="120" height="32" />
       </a>
       <div class="nav-links" role="list">
-        <a href="#how" class="nav-link" role="listitem">How it works</a>
         <a href="#features" class="nav-link" role="listitem">Features</a>
+        <a href="#how" class="nav-link" role="listitem">How it works</a>
       </div>
       <div class="nav-actions">
         <a href="/demo" class="btn btn-ghost">Demo</a>
@@ -38,7 +38,7 @@ const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
         Built on Stellar
       </div>
       <h1 class="hero-title">Onboard users to <span class="grad-text">Stellar</span> in seconds</h1>
-      <p class="hero-sub">Security infrastructure for safe onboarding and account access. Social login, key management, and non-custodial recovery — all in one SDK.</p>
+      <p class="hero-sub">Security infrastructure for safe onboarding. Social login, key management, and non-custodial recovery. No seed phrases, no gas fees.</p>
       <div class="hero-btns">
         <button class="btn btn-primary btn-lg open-dev-modal" type="button">Start building</button>
         <a href="/demo" class="btn btn-outline btn-lg">Try demo</a>
@@ -147,60 +147,26 @@ const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
     </div>
   </section>
 
-  <!-- ===== HOW IT WORKS ===== -->
-  <section class="how" id="how">
-    <div class="section-header rv">
-      <span class="section-tag">Simple integration</span>
-      <h2 class="section-title">How it works</h2>
-      <p class="section-sub">Three steps to onboard your users onto Stellar</p>
-    </div>
-    <div class="how-grid">
-      <div class="how-card rv">
-        <span class="how-num">01</span>
-        <div class="how-icon">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect x="4" y="4" width="24" height="24" rx="6" stroke="#a78bfa" stroke-width="2"/>
-            <path d="M12 16h8M16 12v8" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <h3 class="how-card-title">Install the SDK</h3>
-        <p class="how-card-text">Add Accesly to your project with a single npm install. Works with any JavaScript framework.</p>
-      </div>
-      <div class="how-card rv">
-        <span class="how-num">02</span>
-        <div class="how-icon">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="12" r="5" stroke="#34d399" stroke-width="2"/>
-            <path d="M8 26c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke="#34d399" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <h3 class="how-card-title">Authenticate users</h3>
-        <p class="how-card-text">Users sign in with Google or email. No seed phrases, no browser extensions required.</p>
-      </div>
-      <div class="how-card rv">
-        <span class="how-num">03</span>
-        <div class="how-icon">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect x="6" y="8" width="20" height="16" rx="4" stroke="#a78bfa" stroke-width="2"/>
-            <path d="M22 16h2" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="24" cy="16" r="2" fill="#34d399"/>
-          </svg>
-        </div>
-        <h3 class="how-card-title">Wallet is ready</h3>
-        <p class="how-card-text">A Stellar wallet is automatically created and secured. Users can transact immediately.</p>
-      </div>
-    </div>
-  </section>
-
   <!-- ===== FEATURES ===== -->
   <section class="features" id="features">
     <div class="section-header rv">
-      <span class="section-tag">Developer-first</span>
-      <h2 class="section-title">Built for builders</h2>
-      <p class="section-sub">Everything you need to integrate Stellar wallets into your application</p>
+      <span class="section-tag">Features</span>
+      <h2 class="section-title">Security infrastructure for Stellar.</h2>
+      <p class="section-sub">Everything your application needs to onboard and secure users without exposing private keys.</p>
     </div>
-    <div class="features-grid">
-      <!-- Full-width code card -->
+    <div class="features-top">
+      <!-- Left: description card -->
+      <div class="feat-desc-card rv">
+        <div class="feat-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M14 3L25 9v10l-11 6L3 19V9l11-6z" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M14 25V15M14 15l11-6M14 15L3 9" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3 class="feat-desc-title">Social Login &rarr; Non-Custodial Wallet</h3>
+        <p class="feat-desc-text">Google or Apple authentication creates a full Stellar wallet in seconds. Keys are sharded using Shamir's Secret Sharing and processed inside TEE enclaves. Your users never touch a private key.</p>
+      </div>
+      <!-- Right: code card -->
       <div class="feat-card feat-code-card rv">
         <div class="feat-code-header">
           <div class="feat-code-dots">
@@ -208,59 +174,45 @@ const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
             <span class="dot yellow"></span>
             <span class="dot green"></span>
           </div>
-          <span class="feat-code-label">Quick start</span>
+          <span class="feat-code-label">app.ts</span>
         </div>
-        <pre class="feat-code"><code><span class="c-kw">import</span> <span class="c-fn">Accesly</span> <span class="c-kw">from</span> <span class="c-str">'accesly'</span>;
+        <pre class="feat-code"><code><span class="c-kw">import</span> {'{'} <span class="c-fn">AcceslyClient</span> {'}'} <span class="c-kw">from</span> <span class="c-str">'@accesly/stellar-sdk'</span>
 
-<span class="c-kw">const</span> accesly = <span class="c-kw">new</span> <span class="c-fn">Accesly</span>({'{'}
+<span class="c-kw">const</span> accesly = <span class="c-kw">new</span> <span class="c-fn">AcceslyClient</span>({'{'}
+  <span class="c-prop">apiKey</span>: process.env.<span class="c-prop">ACCESLY_API_KEY</span>,
   <span class="c-prop">network</span>: <span class="c-str">'testnet'</span>,
-  <span class="c-prop">projectId</span>: <span class="c-str">'your-project-id'</span>
-{'}'});
+{'}'})
 
-<span class="c-cm">// Authenticate and create wallet</span>
-<span class="c-kw">const</span> wallet = <span class="c-kw">await</span> accesly.<span class="c-fn">connect</span>();
-<span class="c-fn">console</span>.<span class="c-fn">log</span>(wallet.<span class="c-prop">publicKey</span>);</code></pre>
+<span class="c-cm">// One line = wallet ready</span>
+<span class="c-kw">const</span> session = <span class="c-kw">await</span> accesly.<span class="c-fn">authenticate</span>({'{'}
+  <span class="c-prop">provider</span>: <span class="c-str">'google'</span>,
+{'}'})
+
+<span class="c-fn">console</span>.<span class="c-fn">log</span>(session.<span class="c-prop">publicKey</span>)</code></pre>
       </div>
-
-      <!-- Feature card 1 -->
+    </div>
+    <div class="features-grid">
       <div class="feat-card rv">
         <div class="feat-icon">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <path d="M14 3L25 9v10l-11 6L3 19V9l11-6z" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M14 25V15M14 15l11-6M14 15L3 9" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
+            <rect x="4" y="8" width="20" height="14" rx="3" stroke="#a78bfa" stroke-width="2"/>
+            <path d="M10 8V6a4 4 0 018 0v2" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="14" cy="15" r="2" fill="#a78bfa"/>
           </svg>
         </div>
-        <h3 class="feat-title">Non-custodial keys</h3>
-        <p class="feat-text">Users own their keys. Accesly never has access to private keys — they stay encrypted on-device.</p>
+        <h3 class="feat-title">TEE + Shamir Key Sharding</h3>
+        <p class="feat-text">Ephemeral keys inside Trusted Execution Environments. 2-of-3 key sharding with device, auth, and recovery separation.</p>
       </div>
-
-      <!-- Feature card 2 -->
       <div class="feat-card rv">
         <div class="feat-icon">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <rect x="3" y="7" width="22" height="14" rx="4" stroke="#34d399" stroke-width="2"/>
-            <circle cx="14" cy="14" r="3" stroke="#34d399" stroke-width="2"/>
-            <path d="M8 14h3M17 14h3" stroke="#34d399" stroke-width="2" stroke-linecap="round"/>
+            <path d="M14 3a11 11 0 110 22 11 11 0 010-22z" stroke="#34d399" stroke-width="2"/>
+            <path d="M10 14l3 3 5-5" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <h3 class="feat-title">Social login</h3>
-        <p class="feat-text">Google OAuth and email sign-in. No seed phrases or browser extensions for your users.</p>
+        <h3 class="feat-title">SEP-30 Non-Custodial Recovery</h3>
+        <p class="feat-text">Multi-factor identity verification. Account access restoration without custodial control. Signer revocation and replacement.</p>
       </div>
-
-      <!-- Feature card 3 -->
-      <div class="feat-card rv">
-        <div class="feat-icon">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <path d="M14 3v22M3 14h22" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="14" cy="14" r="10" stroke="#a78bfa" stroke-width="2"/>
-            <path d="M4 10h20M4 18h20" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
-          </svg>
-        </div>
-        <h3 class="feat-title">Multi-network</h3>
-        <p class="feat-text">Deploy on Stellar mainnet or testnet. Switch networks with a single configuration change.</p>
-      </div>
-
-      <!-- Feature card 4 -->
       <div class="feat-card rv">
         <div class="feat-icon">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -268,8 +220,43 @@ const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
             <rect x="2" y="2" width="24" height="24" rx="6" stroke="#34d399" stroke-width="2"/>
           </svg>
         </div>
-        <h3 class="feat-title">Account recovery</h3>
-        <p class="feat-text">Built-in social recovery lets users regain access through their verified identity. No seed phrases to lose.</p>
+        <h3 class="feat-title">SEP-10 Native Auth</h3>
+        <p class="feat-text">Real Stellar signers and thresholds. Works with existing accounts. No protocol workarounds.</p>
+      </div>
+      <div class="feat-card rv">
+        <div class="feat-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M14 4l3 6h7l-5.5 4.5 2 7L14 17l-6.5 4.5 2-7L4 10h7z" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3 class="feat-title">Zero Gas Fees</h3>
+        <p class="feat-text">Users don't need to acquire tokens before their first action. No failed onboarding, no confusion.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HOW IT WORKS ===== -->
+  <section class="how" id="how">
+    <div class="section-header rv">
+      <span class="section-tag">How it works</span>
+      <h2 class="section-title">Three seconds. Zero complexity.</h2>
+      <p class="section-sub">Users sign in with Google. We handle key generation, sharding, and wallet funding behind the scenes.</p>
+    </div>
+    <div class="how-grid">
+      <div class="how-card rv">
+        <span class="how-num">01</span>
+        <h3 class="how-card-title">Click "Continue with Google"</h3>
+        <p class="how-card-text">Familiar OAuth flow. No extensions, no downloads, no wallet setup required from the user.</p>
+      </div>
+      <div class="how-card rv">
+        <span class="how-num">02</span>
+        <h3 class="how-card-title">Wallet created instantly</h3>
+        <p class="how-card-text">Non-custodial Stellar wallet generated with keys sharded 2-of-3 inside a TEE. User never sees a seed phrase.</p>
+      </div>
+      <div class="how-card rv">
+        <span class="how-num">03</span>
+        <h3 class="how-card-title">Ready to transact</h3>
+        <p class="how-card-text">Account funded and active. Zero gas fees. SEP-10 authenticated. Full recovery via SEP-30.</p>
       </div>
     </div>
   </section>
@@ -321,7 +308,7 @@ const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
     <div class="cta-box">
       <div class="cta-glow"></div>
       <h2 class="cta-title">Start building on <span class="grad-text">Stellar</span></h2>
-      <p class="cta-sub">Integrate secure wallet onboarding into your app in minutes. Free to start, no credit card required.</p>
+      <p class="cta-sub">Integrate secure wallet onboarding into your app in minutes. Ship social login. </p>
       <div class="cta-btns">
         <button class="btn btn-primary btn-lg open-dev-modal" type="button">Start building</button>
         <a href="/demo" class="btn btn-outline btn-lg">Try demo</a>
@@ -374,7 +361,7 @@ const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
               </a>
             </li>
             <li>
-              <a href="mailto:contact@accesly.dev" aria-label="Contact us by email">
+              <a href="mailto:acceslyoficial@gmail.com" aria-label="Contact us by email">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4l-10 8L2 4"/></svg>
                 Contact
               </a>
@@ -778,7 +765,7 @@ a.p-item:hover .p-logo {
    SECTION HEADERS
    ======================================== */
 .section-header {
-  text-align: center;
+  text-align: left;
   margin-bottom: 48px;
 }
 .section-tag {
@@ -800,8 +787,7 @@ a.p-item:hover .p-logo {
 .section-sub {
   font-size: 16px;
   color: var(--tx2);
-  max-width: 480px;
-  margin: 0 auto;
+  max-width: 600px;
   line-height: 1.6;
 }
 
@@ -823,7 +809,10 @@ a.p-item:hover .p-logo {
   border: 1px solid var(--border);
   border-radius: var(--r);
   padding: 32px;
+  padding-top: 100px;
+  min-height: 220px;
   position: relative;
+  overflow: hidden;
   transition: border-color 0.3s, transform 0.3s;
 }
 .how-card:hover {
@@ -832,22 +821,19 @@ a.p-item:hover .p-logo {
 }
 .how-num {
   font-family: 'Sora', sans-serif;
-  font-size: 48px;
+  font-size: 64px;
   font-weight: 800;
   color: var(--bg3);
   position: absolute;
   top: 16px;
-  right: 20px;
+  left: 28px;
   line-height: 1;
-}
-.how-icon {
-  margin-bottom: 20px;
 }
 .how-card-title {
   font-family: 'Sora', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
 }
 .how-card-text {
   font-size: 14px;
@@ -863,13 +849,40 @@ a.p-item:hover .p-logo {
   max-width: 1120px;
   margin: 0 auto;
 }
+.features-top {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.feat-desc-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+.feat-desc-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.feat-desc-text {
+  font-size: 14px;
+  color: var(--tx2);
+  line-height: 1.7;
+}
 .features-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
 }
 .feat-code-card {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 .feat-card {
   background: var(--bg2);
@@ -1339,11 +1352,11 @@ a.dev-modal-card:hover {
   .how-grid {
     grid-template-columns: 1fr;
   }
-  .features-grid {
+  .features-top {
     grid-template-columns: 1fr;
   }
-  .feat-code-card {
-    grid-column: 1;
+  .features-grid {
+    grid-template-columns: 1fr;
   }
   .traction-content {
     grid-template-columns: 1fr;
