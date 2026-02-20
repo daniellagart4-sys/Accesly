@@ -854,6 +854,7 @@ a.p-item:hover .p-logo {
   grid-template-columns: 1fr 1fr;
   gap: 24px;
   margin-bottom: 24px;
+  min-width: 0;
 }
 .feat-desc-card {
   background: var(--bg2);
@@ -864,6 +865,8 @@ a.p-item:hover .p-logo {
   flex-direction: column;
   justify-content: center;
   gap: 16px;
+  min-width: 0;
+  overflow: hidden;
 }
 .feat-desc-title {
   font-family: 'Sora', sans-serif;
@@ -875,6 +878,7 @@ a.p-item:hover .p-logo {
   font-size: 14px;
   color: var(--tx2);
   line-height: 1.7;
+  word-break: break-word;
 }
 .features-grid {
   display: grid;
@@ -883,6 +887,8 @@ a.p-item:hover .p-logo {
 }
 .feat-code-card {
   grid-column: auto;
+  min-width: 0;
+  overflow: hidden;
 }
 .feat-card {
   background: var(--bg2);
@@ -928,6 +934,7 @@ a.p-item:hover .p-logo {
   line-height: 1.7;
   overflow-x: auto;
   color: var(--tx2);
+  max-width: 100%;
 }
 .feat-code code {
   font-family: inherit;
@@ -1402,6 +1409,13 @@ a.dev-modal-card:hover {
   }
   .hero-title {
     font-size: 28px;
+  }
+  .feat-code {
+    font-size: 11px;
+  }
+  .feat-desc-card,
+  .feat-code-card {
+    max-width: 100%;
   }
   .phone-frame {
     width: 240px;
