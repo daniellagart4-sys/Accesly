@@ -47,6 +47,11 @@ interface SendPaymentParams {
     amount: string;
     memo?: string;
 }
+/** Result from signing a transaction */
+interface SignResult {
+    signedXdr: string;
+    txHash?: string;
+}
 /** The public context provided by useAccesly hook */
 interface AcceslyContextType {
     /** Whether the initial auth check is in progress */
@@ -77,6 +82,10 @@ interface AcceslyContextType {
     refreshBalance: () => Promise<void>;
     /** Refresh wallet info */
     refreshWallet: () => Promise<void>;
+    /** Sign a transaction XDR without submitting */
+    signTransaction: (xdr: string) => Promise<SignResult>;
+    /** Sign and submit a transaction XDR */
+    signAndSubmit: (xdr: string) => Promise<SignResult>;
 }
 
 declare function AcceslyProvider({ children, ...config }: AcceslyConfig & {
@@ -107,4 +116,4 @@ declare function ConnectButton(): react_jsx_runtime.JSX.Element;
 
 declare function useAccesly(): AcceslyContextType;
 
-export { type AcceslyConfig, type AcceslyContextType, AcceslyProvider, ConnectButton, type SendPaymentParams, type TransactionRecord, type WalletInfo, useAccesly };
+export { type AcceslyConfig, type AcceslyContextType, AcceslyProvider, ConnectButton, type SendPaymentParams, type SignResult, type TransactionRecord, type WalletInfo, useAccesly };
