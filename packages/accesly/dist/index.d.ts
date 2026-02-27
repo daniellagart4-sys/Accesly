@@ -35,17 +35,40 @@ interface WalletInfo {
 /** A single transaction record */
 interface TransactionRecord {
     id: string;
-    type: 'sent' | 'received';
+    type: 'sent' | 'received' | 'swap';
     amount: string;
     asset: string;
     counterparty: string;
     createdAt: string;
+    fromAmount?: string;
+    fromAsset?: string;
+}
+/** A non-XLM asset balance on the wallet */
+interface AssetBalance {
+    code: string;
+    issuer: string;
+    balance: string;
 }
 /** Parameters for sending a payment */
 interface SendPaymentParams {
     destination: string;
     amount: string;
     memo?: string;
+    /** Asset code to send. Defaults to "XLM" if omitted. */
+    assetCode?: string;
+    /** Asset issuer address. Required when assetCode is not "XLM". */
+    assetIssuer?: string;
+}
+/** Parameters for swapping assets via the Stellar DEX */
+interface SwapParams {
+    /** Asset to sell: "XLM" | "USDC" | "EURC" */
+    fromAsset: string;
+    /** Asset to buy: "XLM" | "USDC" | "EURC" */
+    toAsset: string;
+    /** Exact amount to sell */
+    amount: string;
+    /** Minimum amount to receive (slippage protection) */
+    minReceive: string;
 }
 /** Result from signing a transaction */
 interface SignResult {
@@ -62,14 +85,20 @@ interface AcceslyContextType {
     wallet: WalletInfo | null;
     /** Current XLM balance string, or null */
     balance: string | null;
+    /** Non-XLM asset balances (USDC, EURC, etc.) */
+    assetBalances: AssetBalance[];
     /** Last error message, or null */
     error: string | null;
     /** Open the auth popup and connect */
     connect: () => Promise<void>;
     /** Disconnect and clear all state */
     disconnect: () => void;
-    /** Send a payment */
+    /** Send a payment (XLM, USDC, or EURC) */
     sendPayment: (params: SendPaymentParams) => Promise<{
+        txHash: string;
+    }>;
+    /** Swap assets using the Stellar DEX */
+    swap: (params: SwapParams) => Promise<{
         txHash: string;
     }>;
     /** Rotate wallet keys (generates new keypair, updates contract) */
@@ -116,4 +145,4 @@ declare function ConnectButton(): react_jsx_runtime.JSX.Element;
 
 declare function useAccesly(): AcceslyContextType;
 
-export { type AcceslyConfig, type AcceslyContextType, AcceslyProvider, ConnectButton, type SendPaymentParams, type SignResult, type TransactionRecord, type WalletInfo, useAccesly };
+export { type AcceslyConfig, type AcceslyContextType, AcceslyProvider, type AssetBalance, ConnectButton, type SendPaymentParams, type SignResult, type SwapParams, type TransactionRecord, type WalletInfo, useAccesly };

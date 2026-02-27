@@ -32,11 +32,14 @@ export interface WalletInfo {
 /** A single transaction record */
 export interface TransactionRecord {
   id: string;
-  type: 'sent' | 'received';
+  type: 'sent' | 'received' | 'swap';
   amount: string;
   asset: string;
   counterparty: string;
   createdAt: string;
+  // Populated only for type === 'swap'
+  fromAmount?: string;
+  fromAsset?: string;
 }
 
 /** Auth tokens received from the popup */
@@ -93,6 +96,8 @@ export interface AcceslyContextType {
   wallet: WalletInfo | null;
   /** Current XLM balance string, or null */
   balance: string | null;
+  /** Non-XLM asset balances (USDC, EURC, etc.) */
+  assetBalances: AssetBalance[];
   /** Last error message, or null */
   error: string | null;
   /** Open the auth popup and connect */

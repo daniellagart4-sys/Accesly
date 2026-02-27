@@ -24,6 +24,7 @@ import type {
   AcceslyConfig,
   AcceslyContextType,
   WalletInfo,
+  AssetBalance,
   TransactionRecord,
   SendPaymentParams,
   SwapParams,
@@ -49,6 +50,7 @@ export function AcceslyProvider({
 
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
+  const [assetBalances, setAssetBalances] = useState<AssetBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,12 +114,19 @@ export function AcceslyProvider({
     }
   }
 
-  /** Fetch current XLM balance */
+  /** Fetch current XLM and asset balances */
   async function fetchBalance() {
     try {
       const data = await client.getBalance();
       const native = data.balances.find((b) => b.asset === 'native');
       setBalance(native?.balance || '0');
+      const others: AssetBalance[] = data.balances
+        .filter((b) => b.asset !== 'native')
+        .map((b) => {
+          const [code, issuer] = b.asset.split(':');
+          return { code, issuer, balance: b.balance };
+        });
+      setAssetBalances(others);
     } catch {
       // Silently fail, keep previous balance
     }
@@ -143,6 +152,7 @@ export function AcceslyProvider({
     client.clearTokens();
     setWallet(null);
     setBalance(null);
+    setAssetBalances([]);
     setError(null);
     config.onDisconnect?.();
   }, [client, config.onDisconnect]);
@@ -208,6 +218,7 @@ export function AcceslyProvider({
     creating,
     wallet,
     balance,
+    assetBalances,
     error,
     connect,
     disconnect,

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:/Users/danie/Desktop/MyProjects/Web3/Accesly/packages/accesly\" && npm run build 2>&1)"
+    ]
+  }
+}

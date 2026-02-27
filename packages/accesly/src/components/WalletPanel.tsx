@@ -26,6 +26,7 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
   const {
     wallet,
     balance,
+    assetBalances,
     disconnect,
     sendPayment,
     swap,
@@ -472,7 +473,10 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
       );
     }
 
-    // Main wallet view — Send, Receive, Swap buttons
+    // Main wallet view — Send, Receive, Swap buttons + asset cards
+    const assetColor: Record<string, string> = { USDC: '#2775ca', EURC: '#3c7fc0' };
+    const knownAssets = ['USDC', 'EURC'];
+
     return (
       <div style={styles.walletTab}>
         <div style={styles.actionRow}>
@@ -506,6 +510,31 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
             <span style={styles.actionLabel}>Swap</span>
           </button>
         </div>
+
+        {/* Asset balance cards — always show USDC and EURC */}
+        <div style={styles.assetList}>
+          {knownAssets.map((code) => {
+            const found = assetBalances.find((a) => a.code === code);
+            const bal = found ? parseFloat(found.balance) : 0;
+            const isEmpty = bal === 0;
+            return (
+              <div key={code} style={styles.assetCard}>
+                <div style={{ ...styles.assetDot, backgroundColor: assetColor[code] || '#667eea' }} />
+                <div style={styles.assetInfo}>
+                  <span style={styles.assetCode}>{code}</span>
+                  {isEmpty && (
+                    <span style={styles.assetHint}>
+                      Want {code}? Use <strong>Swap</strong> to exchange your XLM.
+                    </span>
+                  )}
+                </div>
+                <span style={styles.assetBalance}>
+                  {bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -521,66 +550,62 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
 
     return (
       <div style={styles.txList}>
-        {transactions.map((tx) => (
-          <div key={tx.id} style={styles.txRow}>
-            <div
-              style={{
-                ...styles.txIcon,
-                backgroundColor:
-                  tx.type === 'received'
-                    ? 'rgba(52, 211, 153, 0.15)'
-                    : 'rgba(248, 113, 113, 0.15)',
-              }}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={tx.type === 'received' ? '#34d399' : '#f87171'}
-                strokeWidth="2.5"
-              >
-                {tx.type === 'received' ? (
-                  <>
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <polyline points="19 12 12 19 5 12" />
-                  </>
-                ) : (
-                  <>
-                    <line x1="12" y1="19" x2="12" y2="5" />
-                    <polyline points="5 12 12 5 19 12" />
-                  </>
-                )}
-              </svg>
-            </div>
+        {transactions.map((tx) => {
+          const isSwap = tx.type === 'swap';
+          const iconBg = isSwap
+            ? 'rgba(251, 191, 36, 0.15)'
+            : tx.type === 'received'
+            ? 'rgba(52, 211, 153, 0.15)'
+            : 'rgba(248, 113, 113, 0.15)';
+          const iconColor = isSwap ? '#fbbf24' : tx.type === 'received' ? '#34d399' : '#f87171';
 
-            <div style={styles.txDetails}>
-              <span style={styles.txType}>
-                {tx.type === 'received' ? 'Received' : 'Sent'}
-              </span>
-              <span style={styles.txCounterparty}>
-                {tx.type === 'received' ? 'from ' : 'to '}
-                {truncate(tx.counterparty)}
-              </span>
-            </div>
+          return (
+            <div key={tx.id} style={styles.txRow}>
+              <div style={{ ...styles.txIcon, backgroundColor: iconBg }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2.5">
+                  {isSwap ? (
+                    <>
+                      <polyline points="17 1 21 5 17 9" />
+                      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                      <polyline points="7 23 3 19 7 15" />
+                      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                    </>
+                  ) : tx.type === 'received' ? (
+                    <>
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <polyline points="19 12 12 19 5 12" />
+                    </>
+                  ) : (
+                    <>
+                      <line x1="12" y1="19" x2="12" y2="5" />
+                      <polyline points="5 12 12 5 19 12" />
+                    </>
+                  )}
+                </svg>
+              </div>
 
-            <div style={styles.txAmountCol}>
-              <span
-                style={{
-                  ...styles.txAmount,
-                  color: tx.type === 'received' ? '#34d399' : '#f87171',
-                }}
-              >
-                {tx.type === 'received' ? '+' : '-'}
-                {parseFloat(tx.amount).toLocaleString('en-US', {
-                  maximumFractionDigits: 2,
-                })}{' '}
-                {tx.asset}
-              </span>
-              <span style={styles.txTime}>{relativeTime(tx.createdAt)}</span>
+              <div style={styles.txDetails}>
+                <span style={styles.txType}>
+                  {isSwap ? 'Swap' : tx.type === 'received' ? 'Received' : 'Sent'}
+                </span>
+                <span style={styles.txCounterparty}>
+                  {isSwap
+                    ? `${tx.fromAsset} → ${tx.asset}`
+                    : (tx.type === 'received' ? 'from ' : 'to ') + truncate(tx.counterparty)}
+                </span>
+              </div>
+
+              <div style={styles.txAmountCol}>
+                <span style={{ ...styles.txAmount, color: iconColor }}>
+                  {isSwap
+                    ? `${parseFloat(tx.fromAmount!).toLocaleString('en-US', { maximumFractionDigits: 4 })} → ${parseFloat(tx.amount).toLocaleString('en-US', { maximumFractionDigits: 4 })}`
+                    : `${tx.type === 'received' ? '+' : '-'}${parseFloat(tx.amount).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${tx.asset}`}
+                </span>
+                <span style={styles.txTime}>{relativeTime(tx.createdAt)}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -824,6 +849,47 @@ const styles: Record<string, React.CSSProperties> = {
   actionIconSwap: {
     backgroundColor: 'rgba(251, 191, 36, 0.15)',
     color: '#fbbf24',
+  },
+  assetList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '0.5rem',
+  },
+  assetCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.65rem',
+    padding: '0.65rem 0.85rem',
+    backgroundColor: '#1a1a2e',
+    border: '1px solid #2a2a4a',
+    borderRadius: '12px',
+  },
+  assetDot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
+  assetInfo: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    flex: 1,
+  },
+  assetCode: {
+    color: '#e2e8f0',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+  },
+  assetHint: {
+    color: '#64748b',
+    fontSize: '0.68rem',
+    marginTop: '1px',
+  },
+  assetBalance: {
+    color: '#a5b4fc',
+    fontSize: '0.85rem',
+    fontWeight: 500,
+    fontFamily: 'monospace',
   },
   actionLabel: {
     fontSize: '0.85rem',
