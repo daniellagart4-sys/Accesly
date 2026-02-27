@@ -7,7 +7,7 @@
  * - API key injection in every request
  */
 
-import type { WalletInfo, TransactionRecord, SendPaymentParams, AuthTokens, SignResult } from './types';
+import type { WalletInfo, TransactionRecord, SendPaymentParams, AuthTokens, SignResult, SwapParams } from './types';
 
 const STORAGE_KEY = 'accesly_auth';
 const DEFAULT_BASE_URL = 'https://accesly.vercel.app';
@@ -155,11 +155,33 @@ export class AcceslyClient {
     return this.request('/api/wallet/balance');
   }
 
-  /** Send a payment */
+  /** Send a payment (XLM, USDC, or EURC) */
   async sendPayment(params: SendPaymentParams): Promise<{ txHash: string }> {
+    const body: Record<string, string> = {
+      destination: params.destination,
+      amount: params.amount,
+    };
+    if (params.memo) body.memo = params.memo;
+    if (params.assetCode && params.assetCode !== 'XLM') {
+      body.asset_code = params.assetCode;
+      if (params.assetIssuer) body.asset_issuer = params.assetIssuer;
+    }
     return this.request('/api/wallet/send', {
       method: 'POST',
-      body: JSON.stringify(params),
+      body: JSON.stringify(body),
+    });
+  }
+
+  /** Swap assets using the Stellar DEX (pathPaymentStrictSend) */
+  async swap(params: SwapParams): Promise<{ txHash: string }> {
+    return this.request('/api/wallet/swap', {
+      method: 'POST',
+      body: JSON.stringify({
+        from_asset: params.fromAsset,
+        to_asset: params.toAsset,
+        amount: params.amount,
+        min_receive: params.minReceive,
+      }),
     });
   }
 

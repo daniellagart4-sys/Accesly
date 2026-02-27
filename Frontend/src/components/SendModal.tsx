@@ -1,15 +1,22 @@
 /**
- * SendModal.tsx - Modal form for sending XLM to another wallet.
+ * SendModal.tsx - Modal form for sending XLM, USDC, or EURC.
  *
  * Fields:
+ * - Asset selector (XLM | USDC | EURC)
  * - Destination address (G...)
- * - Amount (XLM)
+ * - Amount
  * - Memo (optional)
  *
  * Calls POST /api/wallet/send and shows success/error feedback.
  */
 
 import { useState } from 'react';
+
+const ASSETS = [
+  { code: 'XLM',  label: 'XLM  — Stellar Lumens' },
+  { code: 'USDC', label: 'USDC — USD Coin' },
+  { code: 'EURC', label: 'EURC — Euro Coin' },
+];
 
 interface SendModalProps {
   accessToken: string;
@@ -19,6 +26,7 @@ interface SendModalProps {
 }
 
 export function SendModal({ accessToken, onClose, onSuccess }: SendModalProps) {
+  const [selectedAsset, setSelectedAsset] = useState('XLM');
   const [destination, setDestination] = useState('');
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
@@ -32,13 +40,17 @@ export function SendModal({ accessToken, onClose, onSuccess }: SendModalProps) {
     setError(null);
 
     try {
+      const body: Record<string, string> = { destination, amount };
+      if (memo) body.memo = memo;
+      if (selectedAsset !== 'XLM') body.asset_code = selectedAsset;
+
       const res = await fetch('/api/wallet/send', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ destination, amount, memo: memo || undefined }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -83,7 +95,7 @@ export function SendModal({ accessToken, onClose, onSuccess }: SendModalProps) {
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
-          <h2 style={styles.title}>Send XLM</h2>
+          <h2 style={styles.title}>Send</h2>
           <button onClick={onClose} style={styles.closeButton}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -93,6 +105,20 @@ export function SendModal({ accessToken, onClose, onSuccess }: SendModalProps) {
         </div>
 
         <form onSubmit={handleSend} style={styles.form}>
+          {/* Asset selector */}
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Asset</label>
+            <select
+              value={selectedAsset}
+              onChange={(e) => setSelectedAsset(e.target.value)}
+              style={styles.input}
+            >
+              {ASSETS.map((a) => (
+                <option key={a.code} value={a.code}>{a.label}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Destination */}
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Destination Address</label>
@@ -109,7 +135,7 @@ export function SendModal({ accessToken, onClose, onSuccess }: SendModalProps) {
 
           {/* Amount */}
           <div style={styles.fieldGroup}>
-            <label style={styles.label}>Amount (XLM)</label>
+            <label style={styles.label}>Amount ({selectedAsset})</label>
             <input
               type="number"
               placeholder="0.00"

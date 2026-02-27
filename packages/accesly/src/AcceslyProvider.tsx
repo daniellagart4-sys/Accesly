@@ -26,6 +26,7 @@ import type {
   WalletInfo,
   TransactionRecord,
   SendPaymentParams,
+  SwapParams,
   SignResult,
 } from './types';
 
@@ -146,10 +147,18 @@ export function AcceslyProvider({
     config.onDisconnect?.();
   }, [client, config.onDisconnect]);
 
-  /** Send a payment */
+  /** Send a payment (XLM, USDC, or EURC) */
   const sendPayment = useCallback(
     async (params: SendPaymentParams) => {
       return client.sendPayment(params);
+    },
+    [client]
+  );
+
+  /** Swap assets via the Stellar DEX */
+  const swap = useCallback(
+    async (params: SwapParams) => {
+      return client.swap(params);
     },
     [client]
   );
@@ -203,6 +212,7 @@ export function AcceslyProvider({
     connect,
     disconnect,
     sendPayment,
+    swap,
     rotateKeys,
     getTransactions,
     refreshBalance,

@@ -13,7 +13,10 @@ import { useAccesly } from '../hooks/useAccesly';
 import type { TransactionRecord } from '../types';
 
 type Tab = 'wallet' | 'activity' | 'account' | 'security';
-type WalletView = 'main' | 'send' | 'receive';
+type WalletView = 'main' | 'send' | 'receive' | 'swap';
+
+const SWAP_ASSETS = ['XLM', 'USDC', 'EURC'] as const;
+type SwapAsset = (typeof SWAP_ASSETS)[number];
 
 interface WalletPanelProps {
   onClose: () => void;
@@ -25,6 +28,7 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
     balance,
     disconnect,
     sendPayment,
+    swap,
     rotateKeys,
     getTransactions,
     refreshBalance,
@@ -38,9 +42,19 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
   const [sendDest, setSendDest] = useState('');
   const [sendAmount, setSendAmount] = useState('');
   const [sendMemo, setSendMemo] = useState('');
+  const [sendAsset, setSendAsset] = useState('XLM');
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+
+  // Swap form state
+  const [swapFrom, setSwapFrom] = useState<SwapAsset>('USDC');
+  const [swapTo, setSwapTo] = useState<SwapAsset>('EURC');
+  const [swapAmount, setSwapAmount] = useState('');
+  const [swapSlippage, setSwapSlippage] = useState('1');
+  const [swapping, setSwapping] = useState(false);
+  const [swapResult, setSwapResult] = useState<string | null>(null);
+  const [swapError, setSwapError] = useState<string | null>(null);
 
   // Activity state
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
@@ -86,6 +100,7 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
         destination: sendDest,
         amount: sendAmount,
         memo: sendMemo || undefined,
+        assetCode: sendAsset !== 'XLM' ? sendAsset : undefined,
       });
       setSendResult(result.txHash);
       refreshBalance();
@@ -103,6 +118,36 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
     setSendAmount('');
     setSendMemo('');
     setSendError(null);
+    setWalletView('main');
+  }
+
+  async function handleSwap() {
+    if (!swapAmount) return;
+    setSwapping(true);
+    setSwapError(null);
+    try {
+      const minReceive = (
+        parseFloat(swapAmount) * (1 - parseFloat(swapSlippage) / 100)
+      ).toFixed(7);
+      const result = await swap({
+        fromAsset: swapFrom,
+        toAsset: swapTo,
+        amount: swapAmount,
+        minReceive,
+      });
+      setSwapResult(result.txHash);
+      refreshBalance();
+    } catch (err: any) {
+      setSwapError(err.message);
+    } finally {
+      setSwapping(false);
+    }
+  }
+
+  function resetSwapForm() {
+    setSwapResult(null);
+    setSwapAmount('');
+    setSwapError(null);
     setWalletView('main');
   }
 
@@ -250,7 +295,19 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
             />
           </div>
           <div style={styles.formGroup}>
-            <label style={styles.formLabel}>Amount (XLM)</label>
+            <label style={styles.formLabel}>Asset</label>
+            <select
+              value={sendAsset}
+              onChange={(e) => setSendAsset(e.target.value)}
+              style={styles.formInput}
+            >
+              <option value="XLM">XLM — Stellar Lumens</option>
+              <option value="USDC">USDC — USD Coin</option>
+              <option value="EURC">EURC — Euro Coin</option>
+            </select>
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>Amount ({sendAsset})</label>
             <input
               type="number"
               placeholder="0.00"
@@ -324,7 +381,98 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
       );
     }
 
-    // Main wallet view — Send & Receive buttons
+    // Swap sub-view
+    if (walletView === 'swap') {
+      if (swapResult) {
+        return (
+          <div style={styles.centeredCol}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="8 12 11 15 16 9" />
+            </svg>
+            <p style={{ color: '#34d399', fontWeight: 600, margin: '0.5rem 0' }}>Swap Complete</p>
+            <p style={{ color: '#64748b', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+              {swapResult.slice(0, 12)}...{swapResult.slice(-12)}
+            </p>
+            <button onClick={resetSwapForm} style={styles.primaryBtn}>Done</button>
+          </div>
+        );
+      }
+      const toOptions = SWAP_ASSETS.filter((c) => c !== swapFrom);
+      return (
+        <div style={styles.subView}>
+          <button onClick={() => setWalletView('main')} style={styles.backBtn}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Back
+          </button>
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>From</label>
+            <select
+              value={swapFrom}
+              onChange={(e) => {
+                const next = e.target.value as SwapAsset;
+                setSwapFrom(next);
+                if (next === swapTo) setSwapTo(SWAP_ASSETS.find((c) => c !== next)!);
+              }}
+              style={styles.formInput}
+            >
+              {SWAP_ASSETS.filter((c) => c !== swapTo).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>Amount</label>
+            <input
+              type="number"
+              placeholder="0.00"
+              value={swapAmount}
+              onChange={(e) => setSwapAmount(e.target.value)}
+              min="0.0000001"
+              step="any"
+              style={styles.formInput}
+            />
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>To</label>
+            <select
+              value={swapTo}
+              onChange={(e) => setSwapTo(e.target.value as SwapAsset)}
+              style={styles.formInput}
+            >
+              {toOptions.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.formLabel}>Max Slippage (%)</label>
+            <input
+              type="number"
+              placeholder="1"
+              value={swapSlippage}
+              onChange={(e) => setSwapSlippage(e.target.value)}
+              min="0.01"
+              max="50"
+              step="0.1"
+              style={styles.formInput}
+            />
+          </div>
+          {swapError && <p style={styles.error}>{swapError}</p>}
+          <button
+            onClick={handleSwap}
+            disabled={swapping || !swapAmount}
+            style={{ ...styles.primaryBtn, opacity: swapping || !swapAmount ? 0.5 : 1 }}
+          >
+            {swapping ? 'Swapping...' : `Swap ${swapFrom} → ${swapTo}`}
+          </button>
+        </div>
+      );
+    }
+
+    // Main wallet view — Send, Receive, Swap buttons
     return (
       <div style={styles.walletTab}>
         <div style={styles.actionRow}>
@@ -345,6 +493,17 @@ export function WalletPanel({ onClose }: WalletPanelProps) {
               </svg>
             </div>
             <span style={styles.actionLabel}>Receive</span>
+          </button>
+          <button onClick={() => setWalletView('swap')} style={styles.actionBtn}>
+            <div style={{ ...styles.actionIcon, ...styles.actionIconSwap }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+            </div>
+            <span style={styles.actionLabel}>Swap</span>
           </button>
         </div>
       </div>
@@ -661,6 +820,10 @@ const styles: Record<string, React.CSSProperties> = {
   actionIconReceive: {
     backgroundColor: 'rgba(52, 211, 153, 0.15)',
     color: '#34d399',
+  },
+  actionIconSwap: {
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    color: '#fbbf24',
   },
   actionLabel: {
     fontSize: '0.85rem',

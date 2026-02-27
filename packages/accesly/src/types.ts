@@ -47,11 +47,34 @@ export interface AuthTokens {
   user: { id: string; email: string };
 }
 
+/** A non-XLM asset balance on the wallet */
+export interface AssetBalance {
+  code: string;    // e.g. "USDC", "EURC"
+  issuer: string;  // issuer Stellar address
+  balance: string; // balance string
+}
+
 /** Parameters for sending a payment */
 export interface SendPaymentParams {
   destination: string;
   amount: string;
   memo?: string;
+  /** Asset code to send. Defaults to "XLM" if omitted. */
+  assetCode?: string;
+  /** Asset issuer address. Required when assetCode is not "XLM". */
+  assetIssuer?: string;
+}
+
+/** Parameters for swapping assets via the Stellar DEX */
+export interface SwapParams {
+  /** Asset to sell: "XLM" | "USDC" | "EURC" */
+  fromAsset: string;
+  /** Asset to buy: "XLM" | "USDC" | "EURC" */
+  toAsset: string;
+  /** Exact amount to sell */
+  amount: string;
+  /** Minimum amount to receive (slippage protection) */
+  minReceive: string;
 }
 
 /** Result from signing a transaction */
@@ -76,8 +99,10 @@ export interface AcceslyContextType {
   connect: () => Promise<void>;
   /** Disconnect and clear all state */
   disconnect: () => void;
-  /** Send a payment */
+  /** Send a payment (XLM, USDC, or EURC) */
   sendPayment: (params: SendPaymentParams) => Promise<{ txHash: string }>;
+  /** Swap assets using the Stellar DEX */
+  swap: (params: SwapParams) => Promise<{ txHash: string }>;
   /** Rotate wallet keys (generates new keypair, updates contract) */
   rotateKeys: () => Promise<{ newStellarAddress: string }>;
   /** Get transaction history */

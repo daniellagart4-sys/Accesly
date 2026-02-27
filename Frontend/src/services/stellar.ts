@@ -25,6 +25,7 @@ import {
 } from '@stellar/stellar-sdk';
 import { Server, Api, assembleTransaction } from '@stellar/stellar-sdk/rpc';
 import { createHash, randomBytes } from 'node:crypto';
+import { getStellarAsset, getIssuerForCode, USDC_ASSET, EURC_ASSET } from './assets';
 
 // ---------------------------------------------------------------------------
 // Configuration (loaded from environment variables)
@@ -435,8 +436,11 @@ function extractContractId(txResult: Api.GetTransactionResponse): string {
 // Horizon API (balance, send, transaction history)
 // ---------------------------------------------------------------------------
 
-// Horizon testnet server for account queries and classic payments
-const HORIZON_URL = 'https://horizon-testnet.stellar.org';
+// Horizon server — testnet or mainnet based on environment
+const HORIZON_URL =
+  import.meta.env.STELLAR_NETWORK === 'mainnet'
+    ? 'https://horizon.stellar.org'
+    : 'https://horizon-testnet.stellar.org';
 
 /** Balance entry from the Stellar network */
 interface BalanceInfo {
@@ -471,34 +475,82 @@ export async function getAccountBalance(stellarAddress: string): Promise<Balance
 }
 
 /**
- * Send XLM from a wallet to another Stellar address.
+ * Activate USDC and EURC trustlines on a wallet's Stellar address.
  *
- * Builds a classic Stellar payment transaction, signs it with the
- * wallet's secret key, and submits it to the network via Horizon.
+ * Must be called once during wallet creation. Each trustline increases
+ * the account's minimum balance by 0.5 XLM (1 XLM total for two assets).
+ * Accesly funds this cost automatically as part of the wallet setup.
+ *
+ * @param walletSecret - The wallet's own secret key (S... format)
+ */
+export async function activateTrustlines(walletSecret: string): Promise<void> {
+  const walletKeypair = Keypair.fromSecret(walletSecret);
+
+  const accountRes = await fetch(`${HORIZON_URL}/accounts/${walletKeypair.publicKey()}`);
+  if (!accountRes.ok) {
+    throw new Error('Wallet account not found on network for trustline activation');
+  }
+  const accountData = await accountRes.json();
+
+  const account = new StellarAccount(walletKeypair.publicKey(), accountData.sequence);
+
+  const tx = new TransactionBuilder(account, {
+    fee: BASE_FEE,
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(Operation.changeTrust({ asset: USDC_ASSET }))
+    .addOperation(Operation.changeTrust({ asset: EURC_ASSET }))
+    .setTimeout(30)
+    .build();
+
+  tx.sign(walletKeypair);
+
+  const submitRes = await fetch(`${HORIZON_URL}/transactions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `tx=${encodeURIComponent(tx.toXDR())}`,
+  });
+
+  if (!submitRes.ok) {
+    const data = await submitRes.json();
+    const detail = data.extras?.result_codes?.operations?.join(', ') || data.title;
+    throw new Error(`Trustline activation failed: ${detail}`);
+  }
+}
+
+/**
+ * Send a payment (XLM, USDC, or EURC) from a wallet to another Stellar address.
  *
  * @param senderSecret - The sender's secret key (S... format, decrypted)
  * @param destinationAddress - The recipient's Stellar address (G...)
- * @param amount - Amount of XLM to send (as string, e.g. "10.5")
+ * @param amount - Amount to send (as string, e.g. "10.5")
  * @param memo - Optional text memo
+ * @param assetCode - Asset code: "XLM" | "USDC" | "EURC" (defaults to "XLM")
+ * @param assetIssuer - Asset issuer address (required for non-XLM assets)
  * @returns Transaction hash
  */
 export async function sendPayment(
   senderSecret: string,
   destinationAddress: string,
   amount: string,
-  memo?: string
+  memo?: string,
+  assetCode?: string,
+  assetIssuer?: string,
 ): Promise<string> {
   const senderKeypair = Keypair.fromSecret(senderSecret);
 
-  // Load the sender's account from Horizon for the sequence number
   const accountRes = await fetch(`${HORIZON_URL}/accounts/${senderKeypair.publicKey()}`);
   if (!accountRes.ok) {
     throw new Error('Sender account not found on network');
   }
   const accountData = await accountRes.json();
 
-  // Build the payment transaction
   const account = new StellarAccount(senderKeypair.publicKey(), accountData.sequence);
+
+  // Resolve the asset: default to native XLM
+  const asset = assetCode && assetCode !== 'XLM'
+    ? getStellarAsset(assetCode, assetIssuer)
+    : Asset.native();
 
   let txBuilder = new TransactionBuilder(account, {
     fee: BASE_FEE,
@@ -507,13 +559,12 @@ export async function sendPayment(
     .addOperation(
       Operation.payment({
         destination: destinationAddress,
-        asset: Asset.native(),
-        amount: amount,
+        asset,
+        amount,
       })
     )
     .setTimeout(30);
 
-  // Add memo if provided
   if (memo) {
     txBuilder = txBuilder.addMemo(Memo.text(memo));
   }
@@ -521,7 +572,6 @@ export async function sendPayment(
   const tx = txBuilder.build();
   tx.sign(senderKeypair);
 
-  // Submit to Horizon
   const submitRes = await fetch(`${HORIZON_URL}/transactions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -538,16 +588,183 @@ export async function sendPayment(
   return submitData.hash;
 }
 
+/**
+ * Swap assets using Stellar's built-in DEX (pathPaymentStrictSend).
+ *
+ * Sends a fixed amount of one asset and receives at least `destMin` of another.
+ * The DEX automatically finds the best path through available liquidity.
+ * The swap destination is the wallet itself (you swap to yourself).
+ *
+ * @param senderSecret - Wallet secret key
+ * @param fromAssetCode - Asset to sell: "XLM" | "USDC" | "EURC"
+ * @param toAssetCode - Asset to buy: "XLM" | "USDC" | "EURC"
+ * @param sendAmount - Exact amount to sell (string)
+ * @param destMin - Minimum amount to receive (string, accounts for slippage)
+ * @returns Transaction hash
+ */
+/** Intermediate asset in a swap path */
+export interface SwapPathAsset {
+  code: string;         // "XLM", "USDC", etc.
+  issuer: string | null; // null for XLM
+}
+
+/** Result from estimateSwap */
+export interface SwapEstimate {
+  destinationAmount: string;        // expected receive amount
+  path: SwapPathAsset[];            // intermediate hops (may be empty)
+}
+
+/**
+ * Estimate a swap using Horizon's strict-send path-finding endpoint.
+ * Returns the expected destination amount and the optimal intermediate path.
+ * Must be called before swapAssets to get an accurate minReceive value.
+ *
+ * @param fromAssetCode - "XLM" | "USDC" | "EURC"
+ * @param toAssetCode   - "XLM" | "USDC" | "EURC"
+ * @param sendAmount    - Exact amount to sell (string)
+ */
+export async function estimateSwap(
+  fromAssetCode: string,
+  toAssetCode: string,
+  sendAmount: string,
+): Promise<SwapEstimate> {
+  const params = new URLSearchParams();
+
+  // Source asset
+  if (fromAssetCode === 'XLM') {
+    params.set('source_asset_type', 'native');
+  } else {
+    params.set('source_asset_type', 'credit_alphanum4');
+    params.set('source_asset_code', fromAssetCode);
+    params.set('source_asset_issuer', getIssuerForCode(fromAssetCode)!);
+  }
+  params.set('source_amount', sendAmount);
+
+  // Destination asset
+  if (toAssetCode === 'XLM') {
+    params.set('destination_assets', 'native');
+  } else {
+    params.set('destination_assets', `${toAssetCode}:${getIssuerForCode(toAssetCode)}`);
+  }
+
+  const response = await fetch(`${HORIZON_URL}/paths/strict-send?${params}`);
+  if (!response.ok) {
+    throw new Error(`Horizon path-find failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const records: any[] = data._embedded?.records ?? [];
+
+  if (records.length === 0) {
+    throw new Error('No liquidity available for this pair. On testnet, some assets have no DEX liquidity — this will work on mainnet with real liquidity.');
+  }
+
+  // Horizon returns paths sorted best-first
+  const best = records[0];
+
+  const path: SwapPathAsset[] = (best.path ?? []).map((p: any) => ({
+    code: p.asset_type === 'native' ? 'XLM' : p.asset_code,
+    issuer: p.asset_type === 'native' ? null : p.asset_issuer,
+  }));
+
+  return { destinationAmount: best.destination_amount, path };
+}
+
+/**
+ * Swap assets using Stellar's built-in DEX (pathPaymentStrictSend).
+ * Pass the path returned by estimateSwap to ensure the transaction uses
+ * the same route and avoids PATH_PAYMENT_STRICT_SEND_UNDER_DESTMIN errors.
+ *
+ * @param senderSecret - Wallet secret key
+ * @param fromAssetCode - Asset to sell: "XLM" | "USDC" | "EURC"
+ * @param toAssetCode   - Asset to buy:  "XLM" | "USDC" | "EURC"
+ * @param sendAmount    - Exact amount to sell (string)
+ * @param destMin       - Minimum amount to receive (slippage-adjusted)
+ * @param intermediatePath - Path from estimateSwap (intermediate hops)
+ * @returns Transaction hash
+ */
+export async function swapAssets(
+  senderSecret: string,
+  fromAssetCode: string,
+  toAssetCode: string,
+  sendAmount: string,
+  destMin: string,
+  intermediatePath: SwapPathAsset[] = [],
+): Promise<string> {
+  const senderKeypair = Keypair.fromSecret(senderSecret);
+
+  const accountRes = await fetch(`${HORIZON_URL}/accounts/${senderKeypair.publicKey()}`);
+  if (!accountRes.ok) {
+    throw new Error('Sender account not found on network');
+  }
+  const accountData = await accountRes.json();
+
+  const account = new StellarAccount(senderKeypair.publicKey(), accountData.sequence);
+
+  const sendAsset = getStellarAsset(fromAssetCode, getIssuerForCode(fromAssetCode));
+  const destAsset = getStellarAsset(toAssetCode, getIssuerForCode(toAssetCode));
+
+  // Convert intermediate path to Stellar Asset objects
+  const stellarPath = intermediatePath.map((p) =>
+    p.code === 'XLM' ? Asset.native() : new Asset(p.code, p.issuer!)
+  );
+
+  const txBuilder = new TransactionBuilder(account, {
+    fee: BASE_FEE,
+    networkPassphrase: NETWORK_PASSPHRASE,
+  });
+
+  // Ensure destination trustline exists (idempotent: no-op if already active)
+  if (toAssetCode !== 'XLM') {
+    txBuilder.addOperation(Operation.changeTrust({ asset: destAsset }));
+  }
+
+  txBuilder
+    .addOperation(
+      Operation.pathPaymentStrictSend({
+        sendAsset,
+        sendAmount,
+        destination: senderKeypair.publicKey(), // swap to self
+        destAsset,
+        destMin,
+        path: stellarPath,
+      })
+    )
+    .setTimeout(30);
+
+  const tx = txBuilder.build();
+
+  tx.sign(senderKeypair);
+
+  const submitRes = await fetch(`${HORIZON_URL}/transactions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `tx=${encodeURIComponent(tx.toXDR())}`,
+  });
+
+  const submitData = await submitRes.json();
+
+  if (!submitRes.ok) {
+    const errorDetail = submitData.extras?.result_codes?.operations?.join(', ') || submitData.title;
+    throw new Error(`Swap failed: ${errorDetail}`);
+  }
+
+  return submitData.hash;
+}
+
 /** Single transaction entry for the history view */
 export interface TransactionRecord {
   id: string;
-  type: 'sent' | 'received' | 'other';
+  type: 'sent' | 'received' | 'swap';
   amount: string;
   asset: string;
   counterparty: string;  // The other address involved
   memo: string;
   createdAt: string;     // ISO timestamp
   txHash: string;
+  // Populated only for type === 'swap'
+  fromAmount?: string;
+  fromAsset?: string;
 }
 
 /**
@@ -605,9 +822,43 @@ export async function getTransactionHistory(
         txHash: op.transaction_hash,
       });
     }
+
+    // Handle swap operations (pathPaymentStrictSend to self)
+    if (op.type === 'path_payment_strict_send') {
+      const isSelfSwap = op.from === stellarAddress && op.to === stellarAddress;
+      if (isSelfSwap) {
+        records.push({
+          id: op.id,
+          type: 'swap',
+          amount: op.amount,
+          asset: op.asset_type === 'native' ? 'XLM' : op.asset_code,
+          fromAmount: op.source_amount,
+          fromAsset: op.source_asset_type === 'native' ? 'XLM' : op.source_asset_code,
+          counterparty: '',
+          memo: '',
+          createdAt: op.created_at,
+          txHash: op.transaction_hash,
+        });
+      } else {
+        // Path payment to a third party — treat as sent
+        const isSent = op.from === stellarAddress;
+        records.push({
+          id: op.id,
+          type: isSent ? 'sent' : 'received',
+          amount: isSent ? op.source_amount : op.amount,
+          asset: isSent
+            ? (op.source_asset_type === 'native' ? 'XLM' : op.source_asset_code)
+            : (op.asset_type === 'native' ? 'XLM' : op.asset_code),
+          counterparty: isSent ? op.to : op.from,
+          memo: '',
+          createdAt: op.created_at,
+          txHash: op.transaction_hash,
+        });
+      }
+    }
   }
 
   return records;
 }
 
-export { getServerKeypair, rpcServer, NETWORK_PASSPHRASE };
+export { getServerKeypair, rpcServer, NETWORK_PASSPHRASE, HORIZON_URL };

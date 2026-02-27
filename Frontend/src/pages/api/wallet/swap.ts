@@ -1,25 +1,34 @@
 /**
- * POST /api/wallet/send
+ * POST /api/wallet/swap
  *
- * Sends XLM, USDC, or EURC from the authenticated user's wallet.
+ * Swaps one asset for another using Stellar's built-in DEX (pathPaymentStrictSend).
+ * Supported assets: XLM, USDC, EURC.
+ * No counterparty needed — uses the DEX's existing liquidity pools.
  *
  * Flow:
  * 1. Verify authentication
- * 2. Validate inputs (destination, amount, asset)
- * 3. Retrieve and decrypt the wallet's secret key from Supabase
- * 4. Build, sign, and submit the payment transaction
+ * 2. Validate inputs
+ * 3. Retrieve and reconstruct the wallet's secret key
+ * 4. Execute the swap via pathPaymentStrictSend
  * 5. Return the transaction hash
  *
  * Required header: Authorization: Bearer <supabase_jwt>
- * Body: { "destination": "G...", "amount": "10.5", "memo": "optional",
- *         "asset_code": "USDC", "asset_issuer": "G..." }
+ * Body: {
+ *   "from_asset": "USDC",   // "XLM" | "USDC" | "EURC"
+ *   "to_asset":   "EURC",
+ *   "amount":     "10",     // exact amount to sell
+ *   "min_receive":"9.9"     // minimum amount to receive (slippage protection)
+ * }
  */
 
 import type { APIRoute } from 'astro';
 import { getAuthUser, supabaseAdmin } from '../../../services/supabase';
-import { sendPayment } from '../../../services/stellar';
+import { swapAssets } from '../../../services/stellar';
+import type { SwapPathAsset } from '../../../services/stellar';
 import { reconstructKey } from '../../../services/shamir';
 import type { StoredShares } from '../../../services/shamir';
+
+const SUPPORTED_ASSETS = ['XLM', 'USDC', 'EURC'];
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -34,33 +43,38 @@ export const POST: APIRoute = async ({ request }) => {
 
     // --- 2. Parse and validate inputs ---
     const body = await request.json();
-    const { destination, amount, memo, asset_code, asset_issuer } = body;
+    const { from_asset, to_asset, amount, min_receive, path } = body;
 
-    if (!destination || !amount) {
+    if (!from_asset || !to_asset || !amount || !min_receive) {
       return new Response(
-        JSON.stringify({ error: 'Missing "destination" or "amount"' }),
+        JSON.stringify({ error: 'Missing required fields: from_asset, to_asset, amount, min_receive' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate destination format (G... address, 56 chars)
-    if (!destination.startsWith('G') || destination.length !== 56) {
+    if (!SUPPORTED_ASSETS.includes(from_asset) || !SUPPORTED_ASSETS.includes(to_asset)) {
       return new Response(
-        JSON.stringify({ error: 'Invalid destination address format' }),
+        JSON.stringify({ error: `Unsupported asset. Supported: ${SUPPORTED_ASSETS.join(', ')}` }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate amount is a positive number
+    if (from_asset === to_asset) {
+      return new Response(
+        JSON.stringify({ error: 'from_asset and to_asset must be different' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
       return new Response(
-        JSON.stringify({ error: 'Amount must be a positive number' }),
+        JSON.stringify({ error: 'amount must be a positive number' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // --- 3. Retrieve the wallet and its encrypted secret key ---
+    // --- 3. Retrieve the wallet ---
     const { data: wallet } = await supabaseAdmin
       .from('wallets')
       .select('id, stellar_address')
@@ -74,15 +88,7 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // Prevent sending to self
-    if (destination === wallet.stellar_address) {
-      return new Response(
-        JSON.stringify({ error: 'Cannot send to your own address' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get the encrypted Shamir shares from recovery_signers
+    // Get the encrypted Shamir shares
     const { data: signer } = await supabaseAdmin
       .from('recovery_signers')
       .select('kms_share, local_share, gcp_share, key_hash')
@@ -99,21 +105,27 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // --- 4. Reconstruct the secret key from Shamir shares (2-of-3) ---
+    // --- 4. Reconstruct key and execute swap ---
     const secret = await reconstructKey(signer as StoredShares);
 
-    // --- 5. Send the payment (XLM by default; USDC/EURC if asset_code is provided) ---
-    const txHash = await sendPayment(secret, destination, amount, memo, asset_code, asset_issuer);
+    const txHash = await swapAssets(
+      secret,
+      from_asset,
+      to_asset,
+      amount,
+      min_receive,
+      (path as SwapPathAsset[]) ?? [],
+    );
 
     return new Response(
-      JSON.stringify({ txHash, message: 'Payment sent successfully' }),
+      JSON.stringify({ txHash, message: 'Swap executed successfully' }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Send payment failed:', error);
+    console.error('Swap failed:', error);
     return new Response(
       JSON.stringify({
-        error: 'Payment failed',
+        error: 'Swap failed',
         details: error instanceof Error ? error.message : 'Unknown error',
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

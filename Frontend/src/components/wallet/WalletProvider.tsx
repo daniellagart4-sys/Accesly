@@ -26,10 +26,17 @@ export interface WalletInfo {
   recoverySigners?: Array<{ publicKey: string; createdAt: string }>;
 }
 
+export interface AssetBalance {
+  code: string;    // e.g. "USDC", "EURC"
+  issuer: string;  // issuer address
+  balance: string; // balance string
+}
+
 interface WalletContextType {
   session: Session | null;
   wallet: WalletInfo | null;
-  balance: string | null;
+  balance: string | null;         // XLM balance
+  assetBalances: AssetBalance[];  // USDC, EURC, and any other assets
   loading: boolean;
   creating: boolean;
   error: string | null;
@@ -51,6 +58,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
+  const [assetBalances, setAssetBalances] = useState<AssetBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +87,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     } else {
       setWallet(null);
       setBalance(null);
+      setAssetBalances([]);
       setError(null);
     }
   }, [session]);
@@ -143,8 +152,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       });
       if (res.ok) {
         const data = await res.json();
+        // Extract XLM balance
         const native = data.balances.find((b: any) => b.asset === 'native');
         setBalance(native?.balance || '0');
+        // Extract non-native asset balances (USDC, EURC, etc.)
+        const others: AssetBalance[] = data.balances
+          .filter((b: any) => b.asset !== 'native')
+          .map((b: any) => {
+            const [code, issuer] = b.asset.split(':');
+            return { code, issuer, balance: b.balance };
+          });
+        setAssetBalances(others);
       }
     } catch {
       // Silently fail, keep previous balance
@@ -179,6 +197,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         session,
         wallet,
         balance,
+        assetBalances,
         loading,
         creating,
         error,

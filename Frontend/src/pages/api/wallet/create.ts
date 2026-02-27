@@ -25,6 +25,7 @@ import {
   deployContract,
   initContract,
   fundWithFriendbot,
+  activateTrustlines,
 } from '../../../services/stellar';
 import { registerAccount } from '../../../services/sep30';
 
@@ -75,6 +76,11 @@ export const POST: APIRoute = async ({ request }) => {
     // The Stellar address must be funded (activated) before it can be used.
     // Friendbot gives 10,000 test XLM and activates the account on-chain.
     await fundWithFriendbot(walletKeypair.stellarAddress);
+
+    // --- 3.6. Auto-activate USDC and EURC trustlines ---
+    // Each trustline reserves 0.5 XLM in the account's minimum balance (1 XLM total).
+    // Accesly funds this cost. The wallet starts with USDC and EURC enabled.
+    await activateTrustlines(walletKeypair.secret);
 
     // --- 4. Hash email ---
     const emailHashBuffer = hashEmail(email);

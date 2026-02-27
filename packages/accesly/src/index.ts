@@ -50,8 +50,10 @@ export { useAccesly } from './hooks/useAccesly';
 export type {
   AcceslyConfig,
   WalletInfo,
+  AssetBalance,
   TransactionRecord,
   SendPaymentParams,
+  SwapParams,
   SignResult,
   AcceslyContextType,
 } from './types';
