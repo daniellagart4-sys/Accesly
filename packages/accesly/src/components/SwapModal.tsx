@@ -44,7 +44,6 @@ export function SwapModal({ onClose, onSuccess }: SwapModalProps) {
   useEffect(() => {
     setEstimate(null);
     setEstimateError(null);
-    setEstimating(false);
 
     const num = parseFloat(amount);
     if (!amount || isNaN(num) || num <= 0 || fromAsset === toAsset) return;
@@ -65,9 +64,8 @@ export function SwapModal({ onClose, onSuccess }: SwapModalProps) {
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      setEstimating(false);
     };
-  }, [amount, fromAsset, toAsset]); // estimateSwap is stable (useCallback), intentionally omitted
+  }, [amount, fromAsset, toAsset]);
 
   function handleFlip() {
     setFromAsset(toAsset);
