@@ -28,6 +28,7 @@ import type {
   TransactionRecord,
   SendPaymentParams,
   SwapParams,
+  SwapEstimate,
   SignResult,
 } from './types';
 
@@ -165,6 +166,14 @@ export function AcceslyProvider({
     [client]
   );
 
+  /** Get a swap estimate (exchange rate + DEX path) */
+  const estimateSwap = useCallback(
+    async (fromAsset: string, toAsset: string, amount: string): Promise<SwapEstimate> => {
+      return client.estimateSwap(fromAsset, toAsset, amount);
+    },
+    [client]
+  );
+
   /** Swap assets via the Stellar DEX */
   const swap = useCallback(
     async (params: SwapParams) => {
@@ -223,6 +232,7 @@ export function AcceslyProvider({
     connect,
     disconnect,
     sendPayment,
+    estimateSwap,
     swap,
     rotateKeys,
     getTransactions,

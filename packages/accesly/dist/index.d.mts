@@ -59,6 +59,16 @@ interface SendPaymentParams {
     /** Asset issuer address. Required when assetCode is not "XLM". */
     assetIssuer?: string;
 }
+/** A single asset hop in a DEX swap path */
+interface SwapPathAsset {
+    code: string;
+    issuer: string | null;
+}
+/** Estimate returned by /api/wallet/swap-estimate */
+interface SwapEstimate {
+    destinationAmount: string;
+    path: SwapPathAsset[];
+}
 /** Parameters for swapping assets via the Stellar DEX */
 interface SwapParams {
     /** Asset to sell: "XLM" | "USDC" | "EURC" */
@@ -69,6 +79,8 @@ interface SwapParams {
     amount: string;
     /** Minimum amount to receive (slippage protection) */
     minReceive: string;
+    /** Intermediate DEX path from estimateSwap. Omit to let the backend find it. */
+    path?: SwapPathAsset[];
 }
 /** Result from signing a transaction */
 interface SignResult {
@@ -97,6 +109,8 @@ interface AcceslyContextType {
     sendPayment: (params: SendPaymentParams) => Promise<{
         txHash: string;
     }>;
+    /** Get a swap estimate (exchange rate + DEX path) without executing */
+    estimateSwap: (fromAsset: string, toAsset: string, amount: string) => Promise<SwapEstimate>;
     /** Swap assets using the Stellar DEX */
     swap: (params: SwapParams) => Promise<{
         txHash: string;
@@ -135,6 +149,21 @@ declare function AcceslyProvider({ children, ...config }: AcceslyConfig & {
 declare function ConnectButton(): react_jsx_runtime.JSX.Element;
 
 /**
+ * SwapModal.tsx - Swap between XLM, USDC, and EURC using the Stellar DEX.
+ *
+ * Uses the useAccesly hook for estimateSwap and swap — no props beyond callbacks.
+ *
+ * Usage:
+ *   import { SwapModal } from 'accesly';
+ *   <SwapModal onClose={() => setOpen(false)} onSuccess={() => refresh()} />
+ */
+interface SwapModalProps {
+    onClose: () => void;
+    onSuccess?: () => void;
+}
+declare function SwapModal({ onClose, onSuccess }: SwapModalProps): react_jsx_runtime.JSX.Element;
+
+/**
  * useAccesly.ts - Public hook for accessing wallet state and actions.
  *
  * Usage:
@@ -145,4 +174,4 @@ declare function ConnectButton(): react_jsx_runtime.JSX.Element;
 
 declare function useAccesly(): AcceslyContextType;
 
-export { type AcceslyConfig, type AcceslyContextType, AcceslyProvider, type AssetBalance, ConnectButton, type SendPaymentParams, type SignResult, type SwapParams, type TransactionRecord, type WalletInfo, useAccesly };
+export { type AcceslyConfig, type AcceslyContextType, AcceslyProvider, type AssetBalance, ConnectButton, type SendPaymentParams, type SignResult, type SwapEstimate, SwapModal, type SwapParams, type SwapPathAsset, type TransactionRecord, type WalletInfo, useAccesly };

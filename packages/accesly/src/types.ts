@@ -68,6 +68,18 @@ export interface SendPaymentParams {
   assetIssuer?: string;
 }
 
+/** A single asset hop in a DEX swap path */
+export interface SwapPathAsset {
+  code: string;
+  issuer: string | null;
+}
+
+/** Estimate returned by /api/wallet/swap-estimate */
+export interface SwapEstimate {
+  destinationAmount: string;
+  path: SwapPathAsset[];
+}
+
 /** Parameters for swapping assets via the Stellar DEX */
 export interface SwapParams {
   /** Asset to sell: "XLM" | "USDC" | "EURC" */
@@ -78,6 +90,8 @@ export interface SwapParams {
   amount: string;
   /** Minimum amount to receive (slippage protection) */
   minReceive: string;
+  /** Intermediate DEX path from estimateSwap. Omit to let the backend find it. */
+  path?: SwapPathAsset[];
 }
 
 /** Result from signing a transaction */
@@ -106,6 +120,8 @@ export interface AcceslyContextType {
   disconnect: () => void;
   /** Send a payment (XLM, USDC, or EURC) */
   sendPayment: (params: SendPaymentParams) => Promise<{ txHash: string }>;
+  /** Get a swap estimate (exchange rate + DEX path) without executing */
+  estimateSwap: (fromAsset: string, toAsset: string, amount: string) => Promise<SwapEstimate>;
   /** Swap assets using the Stellar DEX */
   swap: (params: SwapParams) => Promise<{ txHash: string }>;
   /** Rotate wallet keys (generates new keypair, updates contract) */

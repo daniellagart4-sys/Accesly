@@ -42,6 +42,7 @@ if (typeof document !== 'undefined') {
 // --- Components ---
 export { AcceslyProvider } from './AcceslyProvider';
 export { ConnectButton } from './components/ConnectButton';
+export { SwapModal } from './components/SwapModal';
 
 // --- Hooks ---
 export { useAccesly } from './hooks/useAccesly';
@@ -54,6 +55,8 @@ export type {
   TransactionRecord,
   SendPaymentParams,
   SwapParams,
+  SwapPathAsset,
+  SwapEstimate,
   SignResult,
   AcceslyContextType,
 } from './types';

@@ -7,7 +7,7 @@
  * - API key injection in every request
  */
 
-import type { WalletInfo, TransactionRecord, SendPaymentParams, AuthTokens, SignResult, SwapParams } from './types';
+import type { WalletInfo, TransactionRecord, SendPaymentParams, AuthTokens, SignResult, SwapParams, SwapEstimate } from './types';
 
 const STORAGE_KEY = 'accesly_auth';
 const DEFAULT_BASE_URL = 'https://accesly.vercel.app';
@@ -172,16 +172,25 @@ export class AcceslyClient {
     });
   }
 
+  /** Get a swap estimate (exchange rate + DEX path) — no auth required */
+  async estimateSwap(fromAsset: string, toAsset: string, amount: string): Promise<SwapEstimate> {
+    return this.request(
+      `/api/wallet/swap-estimate?from_asset=${fromAsset}&to_asset=${toAsset}&amount=${amount}`
+    );
+  }
+
   /** Swap assets using the Stellar DEX (pathPaymentStrictSend) */
   async swap(params: SwapParams): Promise<{ txHash: string }> {
+    const body: Record<string, unknown> = {
+      from_asset: params.fromAsset,
+      to_asset: params.toAsset,
+      amount: params.amount,
+      min_receive: params.minReceive,
+    };
+    if (params.path) body.path = params.path;
     return this.request('/api/wallet/swap', {
       method: 'POST',
-      body: JSON.stringify({
-        from_asset: params.fromAsset,
-        to_asset: params.toAsset,
-        amount: params.amount,
-        min_receive: params.minReceive,
-      }),
+      body: JSON.stringify(body),
     });
   }
 
