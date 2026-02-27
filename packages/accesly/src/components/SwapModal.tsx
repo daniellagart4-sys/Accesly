@@ -67,7 +67,7 @@ export function SwapModal({ onClose, onSuccess }: SwapModalProps) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       setEstimating(false);
     };
-  }, [amount, fromAsset, toAsset, estimateSwap]);
+  }, [amount, fromAsset, toAsset]); // estimateSwap is stable (useCallback), intentionally omitted
 
   function handleFlip() {
     setFromAsset(toAsset);
