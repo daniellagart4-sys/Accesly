@@ -421,14 +421,17 @@ function App() {
 
 function MyWalletUI() {
   const {
-    wallet,         // WalletInfo | null
-    balance,        // string | null (XLM balance)
-    loading,        // boolean
-    creating,       // boolean (first-time wallet creation)
-    error,          // string | null
-    connect,        // () => Promise<void>
-    disconnect,     // () => void
+    wallet,           // WalletInfo | null
+    balance,          // string | null (XLM balance)
+    assetBalances,    // AssetBalance[] (USDC, EURC, etc.)
+    loading,          // boolean
+    creating,         // boolean (first-time wallet creation)
+    error,            // string | null
+    connect,          // () => Promise<void>
+    disconnect,       // () => void
     sendPayment,      // (params) => Promise<{ txHash }>
+    estimateSwap,     // (from, to, amount) => Promise<SwapEstimate>
+    swap,             // (params) => Promise<{ txHash }>
     signTransaction,  // (xdr) => Promise<SignResult>
     signAndSubmit,    // (xdr) => Promise<SignResult>
     refreshBalance,   // () => Promise<void>
@@ -455,21 +458,109 @@ function MyWalletUI() {
         {/* Send Payment */}
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>Sending Payments</h2>
+          <p style={styles.cardDesc}>
+            Send XLM, USDC, or EURC to any Stellar address.
+          </p>
+          <h3 style={{ ...styles.cardTitle, fontSize: '0.8rem', marginTop: '0.5rem' }}>Send XLM</h3>
           <pre style={styles.codeBlock}>
 {`const { sendPayment } = useAccesly();
 
-async function handleSend() {
-  try {
-    const { txHash } = await sendPayment({
-      destination: 'GABCD...WXYZ',  // Stellar address
-      amount: '10.5',                // XLM amount
-      memo: 'Payment for coffee',    // Optional memo
-    });
-    console.log('Transaction:', txHash);
-  } catch (error) {
-    console.error('Payment failed:', error.message);
-  }
+const { txHash } = await sendPayment({
+  destination: 'GABCD...WXYZ',  // Stellar address
+  amount: '10.5',
+  memo: 'Payment for coffee',   // Optional
+});`}
+          </pre>
+          <h3 style={{ ...styles.cardTitle, fontSize: '0.8rem', marginTop: '0.5rem' }}>Send USDC or EURC</h3>
+          <pre style={styles.codeBlock}>
+{`const { txHash } = await sendPayment({
+  destination: 'GABCD...WXYZ',
+  amount: '25.00',
+  assetCode: 'USDC',
+  assetIssuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+});`}
+          </pre>
+        </div>
+
+        {/* Swap */}
+        <div style={styles.card}>
+          <h2 style={styles.cardTitle}>Swapping Assets (DEX)</h2>
+          <p style={styles.cardDesc}>
+            Swap between XLM, USDC, and EURC via the Stellar DEX using{' '}
+            <code style={styles.code}>pathPaymentStrictSend</code>. No counterparty needed —
+            liquidity comes from the on-chain order book.
+          </p>
+
+          <h3 style={{ ...styles.cardTitle, fontSize: '0.8rem', marginTop: '0.5rem' }}>Option A — Drop-in SwapModal component</h3>
+          <p style={styles.cardDesc}>
+            The easiest way. Import <code style={styles.code}>SwapModal</code> and render it when
+            the user wants to swap. It handles estimate fetching, slippage, and submission internally.
+          </p>
+          <pre style={styles.codeBlock}>
+{`import { SwapModal } from 'accesly';
+
+function MyApp() {
+  const [showSwap, setShowSwap] = useState(false);
+  const { refreshBalance } = useAccesly();
+
+  return (
+    <>
+      <button onClick={() => setShowSwap(true)}>Swap</button>
+
+      {showSwap && (
+        <SwapModal
+          onClose={() => setShowSwap(false)}
+          onSuccess={() => {
+            setShowSwap(false);
+            refreshBalance();
+          }}
+        />
+      )}
+    </>
+  );
 }`}
+          </pre>
+
+          <h3 style={{ ...styles.cardTitle, fontSize: '0.8rem', marginTop: '0.5rem' }}>Option B — Manual swap with the hook</h3>
+          <p style={styles.cardDesc}>
+            Use <code style={styles.code}>estimateSwap</code> to get the live rate and DEX path,
+            then pass them to <code style={styles.code}>swap</code>. The <code style={styles.code}>path</code>{' '}
+            from the estimate is optional but recommended — it locks the exact route Horizon found.
+          </p>
+          <pre style={styles.codeBlock}>
+{`const { estimateSwap, swap } = useAccesly();
+
+// 1. Get the live rate (no auth needed)
+const estimate = await estimateSwap('XLM', 'USDC', '50');
+// estimate.destinationAmount → "12.34" (USDC you'll receive)
+// estimate.path             → intermediate hops on the DEX
+
+// 2. Calculate minimum to receive (e.g. 1% slippage)
+const minReceive = (parseFloat(estimate.destinationAmount) * 0.99).toFixed(7);
+
+// 3. Execute the swap
+const { txHash } = await swap({
+  fromAsset:  'XLM',
+  toAsset:    'USDC',
+  amount:     '50',
+  minReceive,
+  path:       estimate.path, // optional but recommended
+});`}
+          </pre>
+
+          <h3 style={{ ...styles.cardTitle, fontSize: '0.8rem', marginTop: '0.5rem' }}>SwapModal props</h3>
+          <pre style={styles.codeBlock}>
+{`interface SwapModalProps {
+  onClose:    () => void;         // Called when the modal is dismissed
+  onSuccess?: () => void;         // Called after a successful swap
+}`}
+          </pre>
+
+          <h3 style={{ ...styles.cardTitle, fontSize: '0.8rem', marginTop: '0.5rem' }}>Supported assets</h3>
+          <pre style={styles.codeBlock}>
+{`'XLM'   // Native Stellar lumens
+'USDC'  // USD Coin (Circle)
+'EURC'  // Euro Coin (Circle)`}
           </pre>
         </div>
 
@@ -483,8 +574,12 @@ async function handleSend() {
 {`import type {
   AcceslyConfig,      // Provider configuration
   WalletInfo,         // Wallet details
+  AssetBalance,       // Non-XLM asset balance (USDC, EURC…)
   TransactionRecord,  // Transaction history entry
   SendPaymentParams,  // sendPayment() parameters
+  SwapParams,         // swap() parameters
+  SwapEstimate,       // estimateSwap() result
+  SwapPathAsset,      // Single hop in the DEX path
   SignResult,         // signTransaction() / signAndSubmit() result
   AcceslyContextType, // Full context shape (useAccesly return)
 } from 'accesly';`}
