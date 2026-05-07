@@ -3,31 +3,21 @@ import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
 import { config } from './config.js';
+import { requireAuth } from './auth.js';
+import type { AuthenticatedRequest } from './auth.js';
 import { relay } from './services/relay.js';
 import { checkAndTrack, getUsage } from './services/x402.js';
 import { runReplenishmentCycle } from './services/replenishment.js';
 import { runMonitorCycle } from './services/monitor.js';
 import { getRelayerTx, getAppConfig } from './db/tables.js';
+import { getXLMBalance, submitXdr } from './stellar/client.js';
+import { Keypair, TransactionBuilder, Operation, BASE_FEE, Account } from '@stellar/stellar-sdk';
 
 const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
-// ---------------------------------------------------------------------------
-// Auth middleware
-// ---------------------------------------------------------------------------
-function requireApiKey(
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-): void {
-  if (req.headers['x-api-key'] as string !== config.apiKey) {
-    res.status(401).json({ error: 'Invalid API key' });
-    return;
-  }
-  next();
-}
 
 // ---------------------------------------------------------------------------
 // Routes
@@ -38,12 +28,9 @@ app.get('/health', (_req, res) => {
 });
 
 // POST /relay — SDK sends signed inner XDR, relayer wraps in fee-bump and submits
-app.post('/relay', requireApiKey, async (req, res) => {
-  const { inner_xdr, app_id, user_id } = req.body as {
-    inner_xdr: string;
-    app_id: string;
-    user_id?: string;
-  };
+app.post('/relay', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const { inner_xdr, app_id } = req.body as { inner_xdr: string; app_id: string };
+  const user_id = req.userId;
 
   if (!inner_xdr || !app_id) {
     res.status(400).json({ error: 'Missing required fields: inner_xdr, app_id' });
@@ -63,7 +50,7 @@ app.post('/relay', requireApiKey, async (req, res) => {
 });
 
 // GET /relay/:txId — check status of a submitted transaction
-app.get('/relay/:txId', requireApiKey, async (req, res) => {
+app.get('/relay/:txId', requireAuth, async (req, res) => {
   const tx = await getRelayerTx(req.params.txId as string);
   if (!tx) {
     res.status(404).json({ error: 'Transaction not found' });
@@ -72,8 +59,49 @@ app.get('/relay/:txId', requireApiKey, async (req, res) => {
   res.json(tx);
 });
 
+// POST /wallet/activate — fund a new wallet with ~1 XLM for activation (issue #22)
+// Called by the createWallet Lambda after deploying the Smart Account
+app.post('/wallet/activate', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const { stellar_address } = req.body as { stellar_address: string };
+
+  if (!stellar_address?.startsWith('G') || stellar_address.length !== 56) {
+    res.status(400).json({ error: 'Invalid stellar_address' });
+    return;
+  }
+
+  try {
+    const fundKeypair = Keypair.fromSecret(config.stellar.fundSecret);
+    const accountRes = await fetch(`${config.stellar.horizonUrl}/accounts/${fundKeypair.publicKey()}`);
+    if (!accountRes.ok) throw new Error('Fund account not found');
+    const accountData = await accountRes.json();
+    const account = new Account(fundKeypair.publicKey(), accountData.sequence);
+
+    const tx = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: config.stellar.networkPassphrase,
+    })
+      .addOperation(
+        Operation.createAccount({
+          destination: stellar_address,
+          startingBalance: '1', // ~1 XLM activation
+        })
+      )
+      .setTimeout(30)
+      .build();
+
+    tx.sign(fundKeypair);
+    const txHash = await submitXdr(tx.toXDR());
+
+    res.json({ tx_hash: txHash });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Activation failed';
+    console.error('[wallet/activate] Error:', message);
+    res.status(500).json({ error: message });
+  }
+});
+
 // GET /usage/:appId — get current month usage stats for an app
-app.get('/usage/:appId', requireApiKey, async (req, res) => {
+app.get('/usage/:appId', requireAuth, async (req, res) => {
   try {
     const usage = await getUsage(req.params.appId as string);
     res.json(usage);
@@ -83,7 +111,7 @@ app.get('/usage/:appId', requireApiKey, async (req, res) => {
 });
 
 // GET /config/:appId — get app relayer config (fee strategy, limits, etc.)
-app.get('/config/:appId', requireApiKey, async (req, res) => {
+app.get('/config/:appId', requireAuth, async (req, res) => {
   const cfg = await getAppConfig(req.params.appId as string);
   if (!cfg) {
     // Return safe defaults if no config exists yet

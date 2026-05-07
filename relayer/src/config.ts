@@ -17,6 +17,7 @@ export const config = {
 
   aws: {
     region: optional('AWS_REGION', 'us-east-1'),
+    cognitoUserPoolId: required('COGNITO_USER_POOL_ID'),
   },
 
   stellar: {
