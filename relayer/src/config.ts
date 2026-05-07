@@ -10,9 +10,17 @@ function optional(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
 
+// M-5: compute network once, derive all dependent values from it
+const network = optional('STELLAR_NETWORK', 'testnet') as 'testnet' | 'mainnet';
+
+// I-4: validate cron expression at startup
+const replenishmentCron = optional('REPLENISHMENT_CRON', '*/5 * * * *');
+if (!/^(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)$/.test(replenishmentCron)) {
+  throw new Error(`Invalid REPLENISHMENT_CRON expression: "${replenishmentCron}"`);
+}
+
 export const config = {
   port: parseInt(optional('PORT', '3001')),
-  apiKey: required('RELAYER_API_KEY'),
   encryptionKey: required('ENCRYPTION_KEY'),
 
   aws: {
@@ -21,24 +29,30 @@ export const config = {
   },
 
   stellar: {
-    network: optional('STELLAR_NETWORK', 'testnet') as 'testnet' | 'mainnet',
+    network,
     networkPassphrase: required('STELLAR_NETWORK_PASSPHRASE'),
-    horizonUrl:
-      optional('STELLAR_NETWORK', 'testnet') === 'mainnet'
-        ? 'https://horizon.stellar.org'
-        : 'https://horizon-testnet.stellar.org',
+    horizonUrl: network === 'mainnet'
+      ? 'https://horizon.stellar.org'
+      : 'https://horizon-testnet.stellar.org',
     fundSecret: required('RELAYER_FUND_SECRET'),
-    usdcIssuer:
-      optional('STELLAR_NETWORK', 'testnet') === 'mainnet'
-        ? 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN'
-        : 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
+    usdcIssuer: network === 'mainnet'
+      ? 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN'
+      : 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
   },
 
+  // M-1: all table names configurable via env
   dynamo: {
-    tableRelayerTxs: optional('DYNAMO_TABLE_RELAYER_TXS', 'relayer_transactions'),
-    tableUsage: optional('DYNAMO_TABLE_USAGE', 'usage_tracking'),
-    tableSwaps: optional('DYNAMO_TABLE_SWAPS', 'fund_account_swaps'),
-    tableChannels: optional('DYNAMO_TABLE_CHANNELS', 'channel_accounts'),
+    tableRelayerTxs:  optional('DYNAMO_TABLE_RELAYER_TXS',  'relayer_transactions'),
+    tableUsage:       optional('DYNAMO_TABLE_USAGE',         'usage_tracking'),
+    tableSwaps:       optional('DYNAMO_TABLE_SWAPS',         'fund_account_swaps'),
+    tableChannels:    optional('DYNAMO_TABLE_CHANNELS',      'channel_accounts'),
+    tableAppConfigs:  optional('DYNAMO_TABLE_APP_CONFIGS',   'app_configs'),
+    tableWallets:     optional('DYNAMO_TABLE_WALLETS',       'wallets'),
+    tableMonitorState: optional('DYNAMO_TABLE_MONITOR_STATE', 'monitor_state'),
+  },
+
+  cors: {
+    allowedOrigins: optional('CORS_ALLOWED_ORIGINS', 'https://app.accesly.io').split(',').map(o => o.trim()),
   },
 
   slack: {
@@ -54,6 +68,6 @@ export const config = {
   },
 
   replenishment: {
-    cron: optional('REPLENISHMENT_CRON', '*/5 * * * *'),
+    cron: replenishmentCron,
   },
 } as const;

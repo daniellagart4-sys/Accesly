@@ -7,7 +7,7 @@ const client = jwksClient({
   jwksUri: `https://cognito-idp.${config.aws.region}.amazonaws.com/${config.aws.cognitoUserPoolId}/.well-known/jwks.json`,
   cache: true,
   cacheMaxEntries: 5,
-  cacheMaxAge: 600_000, // 10 min
+  cacheMaxAge: 600_000,
 });
 
 function getSigningKey(header: jwt.JwtHeader): Promise<string> {
@@ -31,7 +31,7 @@ export async function requireAuth(
 ): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Missing authorization header' });
+    res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
@@ -39,19 +39,27 @@ export async function requireAuth(
 
   try {
     const decoded = jwt.decode(token, { complete: true });
-    if (!decoded || typeof decoded === 'string') throw new Error('Invalid token');
+    if (!decoded || typeof decoded === 'string') throw new Error('Invalid token structure');
 
     const signingKey = await getSigningKey(decoded.header);
+
+    // C-2: Validate issuer, algorithm, and token_use
     const payload = jwt.verify(token, signingKey, {
       algorithms: ['RS256'],
+      issuer: `https://cognito-idp.${config.aws.region}.amazonaws.com/${config.aws.cognitoUserPoolId}`,
     }) as jwt.JwtPayload;
 
+    if (payload.token_use !== 'access') {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     req.userId = payload.sub;
-    // appId comes from the request body or header (set by SDK from AcceslyProvider)
     req.appId = (req.headers['x-app-id'] as string) ?? req.body?.app_id;
 
     next();
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid or expired token' });
+  } catch {
+    // C-6 / H-6: Never leak JWT error details to the client
+    res.status(401).json({ error: 'Unauthorized' });
   }
 }

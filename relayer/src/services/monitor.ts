@@ -1,23 +1,24 @@
 import { ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamo } from '../db/dynamo.js';
+import { getLastProcessedLedger, saveLastProcessedLedger } from '../db/tables.js';
 import { notify } from './slack.js';
 import { config } from '../config.js';
 
-// Last processed ledger sequence — avoids re-processing old events
-let lastLedger = 0;
-
 export async function runMonitorCycle(): Promise<void> {
   try {
-    // Get all deployed contract IDs from wallets table
-    // NOTE: the wallets table lives in the other dev's DB — this may need adjustment
-    // depending on where wallet/contract data is stored in the final architecture
     const contractIds = await fetchContractIds();
     if (!contractIds.length) return;
 
-    const events = await fetchContractEvents(contractIds);
+    // M-2: load cursor from DynamoDB, not in-process memory
+    const lastLedger = await getLastProcessedLedger();
+    const { events, newLastLedger } = await fetchContractEvents(contractIds, lastLedger);
 
     for (const event of events) {
-      await handleEvent(event, contractIds);
+      await handleEvent(event);
+    }
+
+    if (newLastLedger > lastLedger) {
+      await saveLastProcessedLedger(newLastLedger);
     }
   } catch (err) {
     console.error('[monitor] Cycle failed:', err);
@@ -25,60 +26,72 @@ export async function runMonitorCycle(): Promise<void> {
 }
 
 async function fetchContractIds(): Promise<string[]> {
-  // TODO: adjust table name once the other dev confirms where wallets/contracts are stored
+  // TODO: confirm table name with other dev once wallets table is defined in DynamoDB
   try {
-    const result = await dynamo.send(
-      new ScanCommand({
-        TableName: 'wallets',
+    const ids: string[] = [];
+    let lastKey: Record<string, any> | undefined;
+
+    do {
+      const result = await dynamo.send(new ScanCommand({
+        TableName: config.dynamo.tableWallets,
         ProjectionExpression: 'contractId',
         FilterExpression: 'attribute_exists(contractId)',
-      })
-    );
-    return (result.Items ?? []).map((i: any) => i.contractId).filter(Boolean);
+        ExclusiveStartKey: lastKey,
+      }));
+      result.Items?.forEach((i) => { if (i['contractId']) ids.push(i['contractId'] as string); });
+      lastKey = result.LastEvaluatedKey;
+    } while (lastKey);
+
+    return ids;
   } catch {
-    // Table might not exist yet — fail silently
     return [];
   }
 }
 
-async function fetchContractEvents(contractIds: string[]): Promise<any[]> {
-  const params = new URLSearchParams({ order: 'asc', limit: '200' });
-  if (lastLedger > 0) params.set('cursor', `${lastLedger}-0`);
+async function fetchContractEvents(
+  contractIds: string[],
+  lastLedger: number
+): Promise<{ events: any[]; newLastLedger: number }> {
+  // M-3: filter by contract_id in the query, not client-side
+  const allEvents: any[] = [];
+  let newLastLedger = lastLedger;
 
-  const res = await fetch(`${config.stellar.horizonUrl}/contracts/events?${params}`);
-  if (!res.ok) return [];
+  for (const contractId of contractIds) {
+    const params = new URLSearchParams({
+      contract_id: contractId,
+      order: 'asc',
+      limit: '100',
+    });
+    if (lastLedger > 0) params.set('cursor', `${lastLedger}-0`);
 
-  const data = await res.json();
-  const records: any[] = data._embedded?.records ?? [];
+    const res = await fetch(`${config.stellar.horizonUrl}/contracts/events?${params}`);
+    if (!res.ok) continue;
 
-  if (records.length > 0) {
-    const last = records[records.length - 1].ledger;
-    if (last > lastLedger) lastLedger = last;
+    const data = await res.json();
+    const records: any[] = data._embedded?.records ?? [];
+
+    allEvents.push(...records);
+
+    if (records.length > 0) {
+      const last = records[records.length - 1].ledger;
+      if (last > newLastLedger) newLastLedger = last;
+    }
   }
 
-  return records.filter((r) => contractIds.includes(r.contract_id));
+  return { events: allEvents, newLastLedger };
 }
 
-async function handleEvent(event: any, _contractIds: string[]): Promise<void> {
+async function handleEvent(event: any): Promise<void> {
   const topics: string[] = (event.topic ?? []).map((t: any) => String(t).toLowerCase());
   const contractId: string = event.contract_id;
   const txHash: string = event.transaction_hash;
 
   if (topics.some((t) => t.includes('update_owner') || t.includes('key_rotated'))) {
-    await notify(
-      `Key rotation on contract \`${contractId}\`\nTx: \`${txHash}\``,
-      'warning'
-    );
+    await notify(`Key rotation on contract \`${contractId}\`\nTx: \`${txHash}\``, 'warning');
   } else if (topics.some((t) => t.includes('recovery'))) {
-    await notify(
-      `Recovery attempt on contract \`${contractId}\`\nTx: \`${txHash}\``,
-      'critical'
-    );
+    await notify(`Recovery attempt on contract \`${contractId}\`\nTx: \`${txHash}\``, 'critical');
   } else if (topics.some((t) => t.includes('wallet_created'))) {
-    await notify(
-      `New wallet deployed: contract \`${contractId}\`\nTx: \`${txHash}\``,
-      'info'
-    );
+    await notify(`New wallet deployed: \`${contractId}\`\nTx: \`${txHash}\``, 'info');
   }
 
   await pushMetric(topics[0] ?? 'unknown', contractId);
@@ -91,23 +104,19 @@ async function pushMetric(eventType: string, contractId: string): Promise<void> 
     const { CloudWatchClient, PutMetricDataCommand } = await import('@aws-sdk/client-cloudwatch');
     const cw = new CloudWatchClient({ region: config.aws.region });
 
-    await cw.send(
-      new PutMetricDataCommand({
-        Namespace: 'Accesly/Relayer',
-        MetricData: [
-          {
-            MetricName: 'ContractEvent',
-            Dimensions: [
-              { Name: 'EventType', Value: eventType },
-              { Name: 'ContractId', Value: contractId.slice(0, 20) },
-            ],
-            Value: 1,
-            Unit: 'Count',
-            Timestamp: new Date(),
-          },
+    await cw.send(new PutMetricDataCommand({
+      Namespace: 'Accesly/Relayer',
+      MetricData: [{
+        MetricName: 'ContractEvent',
+        Dimensions: [
+          { Name: 'EventType', Value: eventType },
+          { Name: 'ContractId', Value: contractId.slice(0, 20) },
         ],
-      })
-    );
+        Value: 1,
+        Unit: 'Count',
+        Timestamp: new Date(),
+      }],
+    }));
   } catch (err) {
     console.warn('[monitor] CloudWatch push failed:', err);
   }

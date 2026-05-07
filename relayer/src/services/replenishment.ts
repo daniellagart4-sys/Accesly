@@ -1,7 +1,7 @@
 import { ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamo } from '../db/dynamo.js';
-import { createSwapRecord, updateSwapRecord } from '../db/tables.js';
-import { getXLMBalance, getTokenBalance, submitXdr } from '../stellar/client.js';
+import { createSwapRecord, updateSwapRecord, getAppConfig, getFundSecret } from '../db/tables.js';
+import { getXLMBalance, getTokenBalance, submitXdr, estimateSwapOutput } from '../stellar/client.js';
 import { notify } from './slack.js';
 import { config } from '../config.js';
 import {
@@ -14,17 +14,22 @@ import {
 } from '@stellar/stellar-sdk';
 
 export async function runReplenishmentCycle(): Promise<void> {
-  // Find all apps with developer_pays strategy and a configured fund account
-  const result = await dynamo.send(
-    new ScanCommand({
-      TableName: 'app_configs',
+  // M-4: paginated scan — never silently miss apps beyond 1MB
+  const apps: any[] = [];
+  let lastKey: Record<string, any> | undefined;
+
+  do {
+    const result = await dynamo.send(new ScanCommand({
+      TableName: config.dynamo.tableAppConfigs,
       FilterExpression: 'feeStrategy = :s AND attribute_exists(fundAccountPublicKey)',
       ExpressionAttributeValues: { ':s': 'developer_pays' },
       ProjectionExpression: 'appId, fundAccountPublicKey, minBalanceThresholdXlm',
-    })
-  );
+      ExclusiveStartKey: lastKey,
+    }));
 
-  const apps = result.Items ?? [];
+    apps.push(...(result.Items ?? []));
+    lastKey = result.LastEvaluatedKey;
+  } while (lastKey);
 
   await Promise.allSettled(
     apps.map((a) =>
@@ -61,11 +66,7 @@ async function checkApp(app: {
 }
 
 async function swapUsdcToXlm(appId: string, fundAccountAddress: string): Promise<void> {
-  const usdcBalance = await getTokenBalance(
-    fundAccountAddress,
-    'USDC',
-    config.stellar.usdcIssuer
-  );
+  const usdcBalance = await getTokenBalance(fundAccountAddress, 'USDC', config.stellar.usdcIssuer);
 
   if (usdcBalance < 1) {
     await notify(
@@ -76,6 +77,18 @@ async function swapUsdcToXlm(appId: string, fundAccountAddress: string): Promise
   }
 
   const swapAmount = (usdcBalance * 0.8).toFixed(7);
+
+  // H-3: fetch live price and apply slippage before submitting
+  const quotedXlm = await estimateSwapOutput('USDC', config.stellar.usdcIssuer, 'XLM', swapAmount);
+  if (!quotedXlm) {
+    await notify(`Auto-swap failed for \`${appId}\`: no liquidity available for USDC→XLM.`, 'critical');
+    return;
+  }
+
+  const appConfig = await getAppConfig(appId);
+  const slippage = appConfig?.slippagePercentage ?? 2;
+  const destMin = (parseFloat(quotedXlm) * (1 - slippage / 100)).toFixed(7);
+
   const swapId = await createSwapRecord({
     appId,
     fromAsset: 'USDC',
@@ -85,15 +98,13 @@ async function swapUsdcToXlm(appId: string, fundAccountAddress: string): Promise
   });
 
   try {
-    const horizonUrl = config.stellar.horizonUrl;
-    const accountRes = await fetch(`${horizonUrl}/accounts/${fundAccountAddress}`);
-    if (!accountRes.ok) throw new Error('Fund account not found on network');
+    const accountRes = await fetch(`${config.stellar.horizonUrl}/accounts/${fundAccountAddress}`);
+    if (!accountRes.ok) throw new Error('Fund account not found');
     const accountData = await accountRes.json();
     const account = new Account(fundAccountAddress, accountData.sequence);
 
-    // We need the fund account secret to sign — it must be in env or app_config
-    // For now we use the default relayer fund secret
-    const fundKeypair = Keypair.fromSecret(config.stellar.fundSecret);
+    const fundSecret = appConfig ? await getFundSecret(appConfig) : config.stellar.fundSecret;
+    const fundKeypair = Keypair.fromSecret(fundSecret);
 
     const tx = new TransactionBuilder(account, {
       fee: BASE_FEE,
@@ -105,7 +116,7 @@ async function swapUsdcToXlm(appId: string, fundAccountAddress: string): Promise
           sendAmount: swapAmount,
           destination: fundAccountAddress,
           destAsset: Asset.native(),
-          destMin: '1', // Accept any amount of XLM (slippage handled by DEX)
+          destMin, // H-3: slippage-protected minimum
           path: [],
         })
       )
@@ -115,12 +126,13 @@ async function swapUsdcToXlm(appId: string, fundAccountAddress: string): Promise
     tx.sign(fundKeypair);
 
     const txHash = await submitXdr(tx.toXDR());
-
     await updateSwapRecord(swapId, { status: 'confirmed', txHash });
-    await notify(`Auto-swap confirmed for \`${appId}\`: ${swapAmount} USDC → XLM. Tx: \`${txHash}\``, 'info');
+    await notify(`Auto-swap confirmed for \`${appId}\`: ${swapAmount} USDC → XLM (min: ${destMin}). Tx: \`${txHash}\``, 'info');
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = err instanceof Error ? err.message : 'Unknown error';
     await updateSwapRecord(swapId, { status: 'failed' });
-    await notify(`Auto-swap failed for \`${appId}\`: ${msg}`, 'critical');
+    // H-6: log full error server-side, send generic message to Slack
+    console.error(`[replenishment] Swap failed for ${appId}:`, msg);
+    await notify(`Auto-swap failed for \`${appId}\`. Check server logs.`, 'critical');
   }
 }
