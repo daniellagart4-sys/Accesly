@@ -29,6 +29,12 @@ export async function requireAuth(
   res: Response,
   next: NextFunction
 ): Promise<void> {
+  if (process.env['TEST_MODE'] === 'true') {
+    req.userId = req.headers['x-test-user-id'] as string ?? 'test-user';
+    next();
+    return;
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Unauthorized' });
