@@ -15,7 +15,8 @@ const network = optional('STELLAR_NETWORK', 'testnet') as 'testnet' | 'mainnet';
 
 // I-4: validate cron expression at startup
 const replenishmentCron = optional('REPLENISHMENT_CRON', '*/5 * * * *');
-if (!/^(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)$/.test(replenishmentCron)) {
+const cronField = '(?:\\*(?:\\/\\d+)?|[0-9,\\-]+(?:\\/\\d+)?)';
+if (!new RegExp(`^${cronField}\\s+${cronField}\\s+${cronField}\\s+${cronField}\\s+${cronField}$`).test(replenishmentCron)) {
   throw new Error(`Invalid REPLENISHMENT_CRON expression: "${replenishmentCron}"`);
 }
 

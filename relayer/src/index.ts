@@ -33,19 +33,21 @@ app.use(express.json({ limit: '64kb' }));
 const relayLimiter = rateLimit({
   windowMs: 60_000,
   max: 10,
-  keyGenerator: (req) => (req as AuthenticatedRequest).userId ?? req.ip ?? 'unknown',
+  keyGenerator: (req) => (req as AuthenticatedRequest).userId ?? 'unknown',
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { ip: false },
 });
 
 const activateLimiter = rateLimit({
   windowMs: 60 * 60_000,
   max: 5,
-  keyGenerator: (req) => (req as AuthenticatedRequest).userId ?? req.ip ?? 'unknown',
+  keyGenerator: (req) => (req as AuthenticatedRequest).userId ?? 'unknown',
   message: { error: 'Too many activation requests' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { ip: false },
 });
 
 // ---------------------------------------------------------------------------

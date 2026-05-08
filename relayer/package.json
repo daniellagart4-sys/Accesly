@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:test": "dotenv -e .env.test -- tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test:e2e": "node scripts/test-e2e.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch": "^3.0.0",
@@ -15,6 +17,7 @@
     "@stellar/stellar-sdk": "^14.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
+    "dotenv-cli": "^11.0.0",
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.1",
     "helmet": "^8.1.0",
