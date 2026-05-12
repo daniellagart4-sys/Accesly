@@ -7,7 +7,6 @@ import {
   CreateFunctionCommand,
   UpdateFunctionCodeCommand,
   GetFunctionCommand,
-  CreateFunctionUrlConfigCommand,
 } from '@aws-sdk/client-lambda';
 import {
   IAMClient,
@@ -17,12 +16,9 @@ import {
   PutRolePolicyCommand,
 } from '@aws-sdk/client-iam';
 import { execSync } from 'node:child_process';
-import { createWriteStream, mkdirSync, readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
-import { zip } from 'node:zlib';
-import { promisify } from 'node:util';
 
 const __dir    = dirname(fileURLToPath(import.meta.url));
 const rootDir  = join(__dir, '..');
