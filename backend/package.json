@@ -1,0 +1,25 @@
+{
+  "name": "accesly-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "setup-tables": "node scripts/setup-tables.mjs",
+    "setup-kms": "node scripts/setup-kms.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0",
+    "@aws-sdk/client-kms": "^3.600.0",
+    "@aws-sdk/client-ses": "^3.600.0",
+    "@aws-sdk/client-lambda": "^3.600.0",
+    "@stellar/stellar-sdk": "^12.3.0",
+    "tweetnacl": "^1.0.3",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.143",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}
