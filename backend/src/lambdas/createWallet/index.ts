@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandlerV2WithJWTAuthorizer } from 'aws-lambda';
-import { Keypair, Networks, TransactionBuilder, Operation, BASE_FEE, Asset, Account } from '@stellar/stellar-sdk';
-import { PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { Keypair } from '@stellar/stellar-sdk';
+import { GetCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamo } from '../../shared/dynamo.js';
 import { kmsEncrypt } from '../../shared/kms.js';
 import { splitKey, pbkdf2Encrypt, hashEmail } from '../../shared/crypto.js';
@@ -48,68 +48,63 @@ export const handler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (event) 
 
   const now = new Date().toISOString();
 
-  // 6. Store F2 in user_fragments
-  await dynamo.send(new PutCommand({
-    TableName: config.dynamo.tableUserFragments,
-    Item: {
-      userId,
-      f2Encrypted,
-      createdAt: now,
-      updatedAt: now,
-    },
-    ConditionExpression: 'attribute_not_exists(userId)',
-  }));
+  // 6. Fund the Stellar address via relayer /wallet/activate (before writing to DB)
+  const relayerUrl = process.env['RELAYER_URL'];
+  if (!relayerUrl) throw new Error('RELAYER_URL env var not set');
 
-  // 7. Store F3 in email_fragments
-  await dynamo.send(new PutCommand({
-    TableName: config.dynamo.tableEmailFragments,
-    Item: {
-      userId,
-      f3Ciphertext,
-      f3Salt,
-      createdAt: now,
-      updatedAt: now,
-    },
-    ConditionExpression: 'attribute_not_exists(userId)',
-  }));
-
-  // 8. Fund the Stellar address via relayer /wallet/activate
-  const relayerUrl = process.env['RELAYER_URL'] ?? 'http://98.88.198.167:3001';
   const activateRes = await fetch(`${relayerUrl}/wallet/activate`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': event.headers['authorization'] ?? '',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ stellar_address: keypair.publicKey() }),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!activateRes.ok) {
     const err = await activateRes.json().catch(() => ({}));
     throw new Error(`Relayer activation failed: ${JSON.stringify(err)}`);
   }
 
-  // 9. Store wallet record (contractId TBD — Soroban deploy async or pre-deployed factory)
-  await dynamo.send(new PutCommand({
-    TableName: config.dynamo.tableWallets,
-    Item: {
-      userId,
-      stellarAddress: keypair.publicKey(),
-      publicKey: Buffer.from(keypair.rawPublicKey()).toString('hex'),
-      emailHash,
-      contractId: null, // populated after Soroban deploy (issue #22 extension)
-      createdAt: now,
-      updatedAt: now,
-    },
-    ConditionExpression: 'attribute_not_exists(userId)',
+  // 7. Atomic write: user_fragments + email_fragments + wallets in a single transaction
+  await dynamo.send(new TransactWriteCommand({
+    TransactItems: [
+      {
+        Put: {
+          TableName: config.dynamo.tableUserFragments,
+          Item: { userId, f2Encrypted, createdAt: now, updatedAt: now },
+          ConditionExpression: 'attribute_not_exists(userId)',
+        },
+      },
+      {
+        Put: {
+          TableName: config.dynamo.tableEmailFragments,
+          Item: { userId, f3Ciphertext, f3Salt, createdAt: now, updatedAt: now },
+          ConditionExpression: 'attribute_not_exists(userId)',
+        },
+      },
+      {
+        Put: {
+          TableName: config.dynamo.tableWallets,
+          Item: {
+            userId,
+            stellarAddress: keypair.publicKey(),
+            publicKey: Buffer.from(keypair.rawPublicKey()).toString('hex'),
+            emailHash,
+            contractId: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+          ConditionExpression: 'attribute_not_exists(userId)',
+        },
+      },
+    ],
   }));
 
-  // 10. Return F1 to the device — device stores it passkey-protected, server never sees it again
+  // 8. Return F1 to device — device stores it passkey-protected, server never sees it again
   return {
     statusCode: 201,
     body: JSON.stringify({
       stellarAddress: keypair.publicKey(),
       publicKey: Buffer.from(keypair.rawPublicKey()).toString('hex'),
-      f1: Buffer.from(f1).toString('base64'), // device stores this
+      f1: Buffer.from(f1).toString('base64'),
       emailHash,
     }),
   };
