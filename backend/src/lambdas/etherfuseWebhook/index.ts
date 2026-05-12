@@ -1,6 +1,7 @@
 import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { config } from '../../shared/config.js';
+import { sendTransactionConfirmation } from '../../shared/ses.js';
 
 // Public endpoint — no JWT auth — server-to-server from Etherfuse
 // Validates HMAC signature before processing
@@ -46,14 +47,37 @@ function verifySignature(body: string, signature: string): boolean {
 }
 
 async function handleOnrampCompleted(payload: EtherfuseWebhookPayload) {
-  // Etherfuse confirmed SPEI deposit — USDC should be credited to user's Stellar address
-  // The USDC transfer happens on-chain via Etherfuse's Stellar integration
+  const { email, amount_mxn, amount_usdc, transaction_id } = payload.data as {
+    email: string; amount_mxn: string; amount_usdc: string; transaction_id: string;
+  };
   console.log('[etherfuseWebhook] Onramp completed:', payload.data);
+
+  if (email) {
+    await sendTransactionConfirmation({
+      email,
+      type: 'onramp',
+      amountMxn: amount_mxn,
+      amountUsdc: amount_usdc,
+      txId: transaction_id,
+    });
+  }
 }
 
 async function handleOfframpCompleted(payload: EtherfuseWebhookPayload) {
-  // Etherfuse confirmed SPEI payout to user's CLABE
+  const { email, amount_mxn, amount_usdc, transaction_id } = payload.data as {
+    email: string; amount_mxn: string; amount_usdc: string; transaction_id: string;
+  };
   console.log('[etherfuseWebhook] Offramp completed:', payload.data);
+
+  if (email) {
+    await sendTransactionConfirmation({
+      email,
+      type: 'offramp',
+      amountMxn: amount_mxn,
+      amountUsdc: amount_usdc,
+      txId: transaction_id,
+    });
+  }
 }
 
 async function handleKycApproved(payload: EtherfuseWebhookPayload) {
