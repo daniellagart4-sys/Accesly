@@ -43,6 +43,6 @@ export const config = {
   },
 
   ses: {
-    fromEmail: optional('SES_FROM_EMAIL', 'noreply@accesly.io'),
+    fromEmail: optional('SES_FROM_EMAIL', 'acceslyoficial@gmail.com'),
   },
 } as const;
