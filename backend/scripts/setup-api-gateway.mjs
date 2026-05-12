@@ -6,6 +6,7 @@ import {
   ApiGatewayV2Client,
   CreateApiCommand,
   CreateAuthorizerCommand,
+  GetAuthorizersCommand,
   CreateRouteCommand,
   CreateIntegrationCommand,
   CreateStageCommand,
@@ -15,7 +16,6 @@ import {
 import {
   LambdaClient,
   AddPermissionCommand,
-  GetFunctionCommand,
 } from '@aws-sdk/client-lambda';
 
 const region    = process.env.AWS_REGION ?? 'us-east-1';
@@ -54,19 +54,27 @@ if (api) {
 const apiId = api.ApiId;
 
 // ---------------------------------------------------------------------------
-// 2. Cognito JWT authorizer
+// 2. Cognito JWT authorizer — find existing or create
 // ---------------------------------------------------------------------------
-const authorizer = await apigw.send(new CreateAuthorizerCommand({
-  ApiId: apiId,
-  AuthorizerType: 'JWT',
-  IdentitySource: ['$request.header.Authorization'],
-  Name: 'cognito-authorizer',
-  JwtConfiguration: {
-    Audience: [process.env.COGNITO_APP_CLIENT_ID ?? ''],
-    Issuer: `https://cognito-idp.${region}.amazonaws.com/${poolId}`,
-  },
-}));
-console.log(`✓ Authorizer: ${authorizer.AuthorizerId}`);
+const existingAuthorizers = await apigw.send(new GetAuthorizersCommand({ ApiId: apiId }));
+let authorizerId = existingAuthorizers.Items?.find(a => a.Name === 'cognito-authorizer')?.AuthorizerId;
+
+if (authorizerId) {
+  console.log(`✓ Authorizer exists: ${authorizerId}`);
+} else {
+  const authorizer = await apigw.send(new CreateAuthorizerCommand({
+    ApiId: apiId,
+    AuthorizerType: 'JWT',
+    IdentitySource: ['$request.header.Authorization'],
+    Name: 'cognito-authorizer',
+    JwtConfiguration: {
+      Audience: [process.env.COGNITO_APP_CLIENT_ID ?? ''],
+      Issuer: `https://cognito-idp.${region}.amazonaws.com/${poolId}`,
+    },
+  }));
+  authorizerId = authorizer.AuthorizerId;
+  console.log(`✓ Authorizer created: ${authorizerId}`);
+}
 
 // ---------------------------------------------------------------------------
 // 3. Lambda integrations + routes
@@ -123,7 +131,7 @@ for (const route of routes) {
     RouteKey: `${route.method} ${route.path}`,
     Target: `integrations/${integrationCache.get(fnName)}`,
     AuthorizationType: route.auth ? 'JWT' : 'NONE',
-    AuthorizerId: route.auth ? authorizer.AuthorizerId : undefined,
+    AuthorizerId: route.auth ? authorizerId : undefined,
   }));
 
   console.log(`✓ ${route.method} ${route.path} → ${fnName} [auth:${route.auth}]`);
