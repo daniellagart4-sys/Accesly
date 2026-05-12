@@ -113,18 +113,16 @@ console.log('✓ Build complete');
 for (const name of LAMBDAS) {
   process.stdout.write(`\nDeploying ${name}... `);
 
-  // Zip the handler + shared files
-  const distDir  = join(rootDir, 'dist');
-  const zipPath  = join(rootDir, `dist/${name}.zip`);
+  const distDir = join(rootDir, 'dist');
+  const zipPath = join(rootDir, `dist/${name}.zip`);
+  const opts    = { stdio: 'ignore' };
 
-  execSync(
-    `cd ${distDir} && zip -r ${zipPath} lambdas/${name}/ shared/ node_modules/ 2>/dev/null || true`,
-    { stdio: 'pipe' }
-  );
-
-  // Copy node_modules into dist for bundling
-  execSync(`cp -r ${rootDir}/node_modules ${distDir}/node_modules 2>/dev/null || true`, { stdio: 'pipe' });
-  execSync(`cd ${distDir} && zip -r ${zipPath} lambdas/${name}/ shared/ node_modules/`, { stdio: 'pipe' });
+  // Copy node_modules into dist once (reused across Lambdas)
+  execSync(`cp -rn ${rootDir}/node_modules ${distDir}/node_modules 2>/dev/null || true`, opts);
+  // Remove previous zip if exists
+  execSync(`rm -f ${zipPath}`, opts);
+  // Zip handler + shared + node_modules (output suppressed — too large for pipe buffer)
+  execSync(`cd ${distDir} && zip -qr ${zipPath} lambdas/${name}/ shared/ node_modules/`, opts);
 
   const zipBuffer = readFileSync(zipPath);
 
