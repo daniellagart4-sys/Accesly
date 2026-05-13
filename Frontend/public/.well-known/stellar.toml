@@ -1,0 +1,87 @@
+VERSION = "2.0.0"
+
+NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
+
+# When domain is purchased, update to: https://accesly.io/.well-known/stellar.toml
+# and change NETWORK_PASSPHRASE to mainnet: "Public Global Stellar Network ; September 2015"
+
+FEDERATION_SERVER    = "https://api.accesly.vercel.app/federation"
+WEB_AUTH_ENDPOINT    = "https://7xteb2jknk.execute-api.us-east-1.amazonaws.com/sep10/auth"
+RECOVERY_SERVER      = "https://7xteb2jknk.execute-api.us-east-1.amazonaws.com/sep30"
+
+# SEP-10 signing key — replace with actual Stellar keypair before mainnet
+SIGNING_KEY = "PLACEHOLDER_REPLACE_WITH_STELLAR_PUBLIC_KEY"
+
+ACCOUNTS = []
+
+[DOCUMENTATION]
+ORG_NAME            = "Accesly"
+ORG_DBA             = "Accesly"
+ORG_URL             = "https://accesly.vercel.app"
+ORG_LOGO            = "https://accesly.vercel.app/favicon.svg"
+ORG_DESCRIPTION     = "Non-custodial crypto wallet with MPC key management and CETES yield for Mexican users"
+ORG_OFFICIAL_EMAIL  = "acceslyoficial@gmail.com"
+ORG_SUPPORT_EMAIL   = "acceslyoficial@gmail.com"
+ORG_TWITTER         = "accesly"
+ORG_GITHUB          = "daniellagart4-sys"
+
+[[PRINCIPALS]]
+name  = "Accesly Team"
+email = "acceslyoficial@gmail.com"
+
+# ---------------------------------------------------------------------------
+# Supported currencies
+# ---------------------------------------------------------------------------
+
+[[CURRENCIES]]
+code        = "USDC"
+issuer      = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+display_decimals = 2
+name        = "USD Coin"
+desc        = "USDC on Stellar testnet"
+is_asset_anchored = true
+anchor_asset_type = "fiat"
+anchor_asset = "USD"
+status      = "test"
+
+[[CURRENCIES]]
+code        = "EURC"
+issuer      = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+display_decimals = 2
+name        = "Euro Coin"
+desc        = "EURC on Stellar testnet"
+is_asset_anchored = true
+anchor_asset_type = "fiat"
+anchor_asset = "EUR"
+status      = "test"
+
+[[CURRENCIES]]
+code        = "MXNe"
+issuer      = "PLACEHOLDER_MXNE_ISSUER"
+display_decimals = 2
+name        = "Mexican Peso (tokenized)"
+desc        = "MXN-pegged stablecoin on Stellar"
+is_asset_anchored = true
+anchor_asset_type = "fiat"
+anchor_asset = "MXN"
+status      = "test"
+
+[[CURRENCIES]]
+code        = "CETES"
+issuer      = "PLACEHOLDER_CETES_ISSUER"
+display_decimals = 6
+name        = "CETES"
+desc        = "Mexican government treasury bonds (CETES) tokenized via Etherfuse on Stellar"
+is_asset_anchored = true
+anchor_asset_type = "other"
+anchor_asset = "CETES"
+status      = "test"
+
+# ---------------------------------------------------------------------------
+# Soroban smart contracts — replace placeholders after mainnet deploy
+# ---------------------------------------------------------------------------
+
+[DOCUMENTATION.CONTRACTS]
+smart_account_factory = "PLACEHOLDER_FACTORY_CONTRACT_ID"
+passkey_verifier      = "PLACEHOLDER_PASSKEY_VERIFIER_CONTRACT_ID"
+secp256r1_verifier    = "PLACEHOLDER_SECP256R1_VERIFIER_CONTRACT_ID"
