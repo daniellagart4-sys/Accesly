@@ -6,7 +6,7 @@ import {
   WAFV2Client,
   CreateWebACLCommand,
   ListWebACLsCommand,
-  AssociateWebACLCommand,
+
 } from '@aws-sdk/client-wafv2';
 import {
   EC2Client,
@@ -28,7 +28,7 @@ import {
   CreateRoleCommand,
   GetRoleCommand,
   PutRolePolicyCommand,
-  AttachRolePolicyCommand,
+
 } from '@aws-sdk/client-iam';
 import {
   LambdaClient,
@@ -37,7 +37,7 @@ import {
 
 const region    = process.env.AWS_REGION    ?? 'us-east-1';
 const accountId = process.env.AWS_ACCOUNT_ID;
-const apiId     = process.env.API_GATEWAY_ID ?? '7xteb2jknk';
+
 
 if (!accountId) throw new Error('AWS_ACCOUNT_ID required');
 
@@ -149,18 +149,11 @@ if (webAclArn) {
   console.log(`✓ WAF WebACL created: ${webAclArn}`);
 }
 
-// Associate WAF with API Gateway stage
-const apiArn = `arn:aws:apigateway:${region}::/apis/${apiId}/stages/$default`;
-try {
-  await waf.send(new AssociateWebACLCommand({
-    WebACLArn: webAclArn,
-    ResourceArn: apiArn,
-  }));
-  console.log(`✓ WAF associated with API Gateway stage`);
-} catch (err) {
-  if (!err.message?.includes('already associated')) throw err;
-  console.log(`✓ WAF already associated with API Gateway`);
-}
+// WAF association with HTTP API v2 is not supported directly.
+// To apply WAF: put CloudFront in front and associate the WebACL with the distribution.
+// The WebACL is ready — ARN stored for future CloudFront association.
+console.log(`⚠ WAF association skipped — HTTP API v2 requires CloudFront as frontend.`);
+console.log(`  WebACL ARN: ${webAclArn}`);
 
 // ---------------------------------------------------------------------------
 // 2. VPC + private subnets + security group
