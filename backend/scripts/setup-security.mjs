@@ -237,7 +237,7 @@ if (sgId) {
 } else {
   const sg = await ec2.send(new CreateSecurityGroupCommand({
     GroupName: 'accesly-lambda-sg',
-    Description: 'Accesly Lambda functions — outbound to VPC endpoints only',
+    Description: 'Accesly Lambda functions - outbound to VPC endpoints only',
     VpcId: vpcId,
     TagSpecifications: [{
       ResourceType: 'security-group',
