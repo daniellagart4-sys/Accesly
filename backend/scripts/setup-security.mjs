@@ -282,12 +282,13 @@ const gatewayEndpoints = [
   `com.amazonaws.${region}.s3`,
 ];
 
+// SES has no interface endpoint — Lambdas that call SES need internet (NAT Gateway) when in VPC
+// For now Lambdas run outside VPC; these endpoints are for future use when NAT is added
 const interfaceEndpoints = [
   `com.amazonaws.${region}.kms`,
-  `com.amazonaws.${region}.email-smtp`,  // SES SMTP
-  `com.amazonaws.${region}.logs`,        // CloudWatch Logs
-  `com.amazonaws.${region}.monitoring`,  // CloudWatch Metrics
-  `com.amazonaws.${region}.xray`,        // X-Ray
+  `com.amazonaws.${region}.logs`,
+  `com.amazonaws.${region}.monitoring`,
+  `com.amazonaws.${region}.xray`,
 ];
 
 // Gateway endpoints (free)
@@ -464,29 +465,27 @@ for (const [fnName, policy] of Object.entries(lambdaPolicies)) {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Update each Lambda: new role + VPC config
+// 5. Update each Lambda: new role only (VPC skipped — Lambdas need internet for Stellar/Etherfuse/Relayer)
 // ---------------------------------------------------------------------------
-console.log('\n── Updating Lambdas (role + VPC) ───────────────────────────────────');
+console.log('\n── Updating Lambda IAM roles ────────────────────────────────────────');
 
 for (const fnName of LAMBDAS) {
   await lambda.send(new UpdateFunctionConfigurationCommand({
     FunctionName: fnName,
     Role: roleArns[fnName],
-    VpcConfig: {
-      SubnetIds: subnetIds,
-      SecurityGroupIds: [sgId],
-    },
   }));
-  console.log(`✓ ${fnName}: role + VPC updated`);
+  console.log(`✓ ${fnName}: least-privilege role applied`);
 }
 
 console.log(`\n✓ Security setup complete`);
 console.log(`
 Summary:
   WAF WebACL:     accesly-waf (SQLi, XSS, bad inputs, rate limit 1000/5min/IP)
-  VPC:            ${vpcId}
+                  Note: associate with CloudFront when added as frontend
+  VPC:            ${vpcId} (ready for future RDS/Redis)
   Subnets:        ${subnetIds.join(', ')}
-  Security group: ${sgId}
-  VPC endpoints:  dynamodb (gateway), kms, ses, logs, monitoring, xray
-  IAM roles:      one per Lambda with least-privilege access
+  VPC endpoints:  dynamodb (gateway), kms, logs, monitoring, xray
+  IAM roles:      one per Lambda with least-privilege DynamoDB/KMS/SES access
+  Lambda VPC:     skipped -- Lambdas need internet for Stellar/Etherfuse/Relayer
+                  Add NAT Gateway to vpc ${vpcId} before moving Lambdas into VPC
 `);
