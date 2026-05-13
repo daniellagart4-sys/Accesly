@@ -5,7 +5,6 @@ NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
 # When domain is purchased, update to: https://accesly.io/.well-known/stellar.toml
 # and change NETWORK_PASSPHRASE to mainnet: "Public Global Stellar Network ; September 2015"
 
-FEDERATION_SERVER    = "https://api.accesly.vercel.app/federation"
 WEB_AUTH_ENDPOINT    = "https://7xteb2jknk.execute-api.us-east-1.amazonaws.com/sep10/auth"
 RECOVERY_SERVER      = "https://7xteb2jknk.execute-api.us-east-1.amazonaws.com/sep30"
 
