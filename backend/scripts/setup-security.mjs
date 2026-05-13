@@ -464,6 +464,10 @@ for (const [fnName, policy] of Object.entries(lambdaPolicies)) {
   roleArns[fnName] = roleArn;
 }
 
+// Wait for IAM role propagation before assigning to Lambdas
+console.log('\n  Waiting 15s for IAM propagation...');
+await new Promise(r => setTimeout(r, 15_000));
+
 // ---------------------------------------------------------------------------
 // 5. Update each Lambda: new role only (VPC skipped — Lambdas need internet for Stellar/Etherfuse/Relayer)
 // ---------------------------------------------------------------------------
