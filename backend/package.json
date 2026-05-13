@@ -8,7 +8,8 @@
     "setup-kms": "node scripts/setup-kms.mjs",
     "setup-api-gateway": "node scripts/setup-api-gateway.mjs",
     "deploy-lambdas": "node scripts/deploy-lambdas.mjs",
-    "setup-ses": "node scripts/setup-ses.mjs"
+    "setup-ses": "node scripts/setup-ses.mjs",
+    "setup-cloudwatch": "node scripts/setup-cloudwatch.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.600.0",
