@@ -246,10 +246,12 @@ const dashboard = {
       x: 0, y: 0, width: 12, height: 6,
       properties: {
         title: 'Lambda Errors',
+        region,
         metrics: LAMBDAS.map(name => ['AWS/Lambda', 'Errors', 'FunctionName', name]),
         period: 300,
         stat: 'Sum',
         view: 'timeSeries',
+        annotations: { horizontal: [] },
       },
     },
     {
@@ -257,9 +259,11 @@ const dashboard = {
       x: 12, y: 0, width: 12, height: 6,
       properties: {
         title: 'Lambda Duration (p99)',
+        region,
         metrics: LAMBDAS.map(name => ['AWS/Lambda', 'Duration', 'FunctionName', name, { stat: 'p99' }]),
         period: 300,
         view: 'timeSeries',
+        annotations: { horizontal: [] },
       },
     },
     {
@@ -267,12 +271,14 @@ const dashboard = {
       x: 0, y: 6, width: 12, height: 6,
       properties: {
         title: 'API Gateway — Requests & 5xx',
+        region,
         metrics: [
           ['AWS/ApiGateway', 'Count', 'ApiId', apiId, { stat: 'Sum', label: 'Requests' }],
           ['AWS/ApiGateway', '5XXError', 'ApiId', apiId, { stat: 'Sum', label: '5xx Errors' }],
         ],
         period: 300,
         view: 'timeSeries',
+        annotations: { horizontal: [] },
       },
     },
     {
@@ -280,10 +286,12 @@ const dashboard = {
       x: 12, y: 6, width: 12, height: 6,
       properties: {
         title: 'Lambda Throttles',
+        region,
         metrics: LAMBDAS.map(name => ['AWS/Lambda', 'Throttles', 'FunctionName', name]),
         period: 300,
         stat: 'Sum',
         view: 'timeSeries',
+        annotations: { horizontal: [] },
       },
     },
     {
@@ -291,6 +299,7 @@ const dashboard = {
       x: 0, y: 12, width: 12, height: 6,
       properties: {
         title: 'DynamoDB — Consumed Capacity',
+        region,
         metrics: [
           ['AWS/DynamoDB', 'ConsumedReadCapacityUnits', 'TableName', 'user_fragments', { stat: 'Sum' }],
           ['AWS/DynamoDB', 'ConsumedWriteCapacityUnits', 'TableName', 'user_fragments', { stat: 'Sum' }],
@@ -299,6 +308,7 @@ const dashboard = {
         ],
         period: 300,
         view: 'timeSeries',
+        annotations: { horizontal: [] },
       },
     },
     {
