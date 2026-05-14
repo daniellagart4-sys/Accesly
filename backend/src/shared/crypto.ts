@@ -1,25 +1,25 @@
 import { randomBytes, createHash, pbkdf2Sync } from 'node:crypto';
 
-// Shamir 2-of-3 split over GF(256) — simple XOR-based scheme for 3 shares, threshold 2
-// F1 stays on device (passkey-protected), F2 goes to KMS-encrypted DynamoDB, F3 email-encrypted DynamoDB
+/**
+ * @deprecated Not used since createWallet v2. Client generates fragments.
+ * Kept for reference — was a 3-of-3 XOR scheme (required all shares).
+ * The current scheme is two independent 2-of-2 splits:
+ *   normal:   F1 (device) XOR F2 (server/KMS) = secret
+ *   recovery: K_email XOR emailFragment = F1 → F1 XOR F2 = secret
+ */
 export function splitKey(secret: Uint8Array): [Uint8Array, Uint8Array, Uint8Array] {
   const len = secret.length;
   const f1 = randomBytes(len);
-  const f2 = randomBytes(len);
-  // F3 = secret XOR F1 XOR F2, so secret = F1 XOR F2 XOR F3
-  const f3 = Buffer.alloc(len);
-  for (let i = 0; i < len; i++) {
-    f3[i] = secret[i] ^ f1[i] ^ f2[i];
-  }
-  return [f1, f2, f3];
+  const f2 = Buffer.alloc(len);
+  for (let i = 0; i < len; i++) f2[i] = secret[i] ^ f1[i];
+  return [f1, f2, Buffer.from(f1)]; // f3 = copy of f1, to be email-encrypted by caller
 }
 
-export function recombineKey(f1: Uint8Array, f2: Uint8Array, f3: Uint8Array): Uint8Array {
+/** @deprecated Use client-side XOR in SDK instead. */
+export function recombineKey(f1: Uint8Array, f2: Uint8Array, _f3?: Uint8Array): Uint8Array {
   const len = f1.length;
   const secret = Buffer.alloc(len);
-  for (let i = 0; i < len; i++) {
-    secret[i] = f1[i] ^ f2[i] ^ f3[i];
-  }
+  for (let i = 0; i < len; i++) secret[i] = f1[i] ^ f2[i];
   return secret;
 }
 
