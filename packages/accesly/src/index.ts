@@ -47,9 +47,14 @@ export { SwapModal } from './components/SwapModal';
 // --- Hooks ---
 export { useAccesly } from './hooks/useAccesly';
 
+// --- Auth callback helper (call from your /auth/callback page) ---
+export { exchangeCognitoCode } from './auth';
+
 // --- Types ---
 export type {
   AcceslyConfig,
+  CognitoTokens,
+  StoredSession,
   WalletInfo,
   AssetBalance,
   TransactionRecord,

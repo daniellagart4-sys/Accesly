@@ -1,35 +1,71 @@
-/**
- * types.ts - Public TypeScript types for the Accesly SDK.
- */
+// ---- Auth ----
 
-/** Configuration for AcceslyProvider */
+/** Tokens returned by Cognito after OAuth2 code exchange */
+export interface CognitoTokens {
+  accessToken: string;
+  idToken: string;
+  refreshToken: string;
+  expiresAt: number; // ms since epoch
+}
+
+/** Persisted session stored in localStorage after successful auth */
+export interface StoredSession {
+  tokens: CognitoTokens;
+  credentialId: string;   // base64 WebAuthn credential ID for F1 retrieval
+  userId: string;         // Cognito sub
+  email: string;
+  stellarAddress: string; // G... address of the smart account
+}
+
+// ---- Config ----
+
+/** Configuration passed to <AcceslyProvider> */
 export interface AcceslyConfig {
-  /** Your developer API key (starts with "acc_") */
+  /** Developer app ID (issued by Accesly, e.g. "acc_xxxxx") */
   appId: string;
-  /** Base URL of the Accesly backend. Defaults to https://accesly.vercel.app */
-  baseUrl?: string;
-  /** Stellar network. Defaults to "testnet" */
+  /** Cognito User Pool Client ID */
+  cognitoClientId: string;
+  /**
+   * Cognito Hosted UI domain.
+   * Example: "accesly.auth.us-east-1.amazoncognito.com"
+   */
+  cognitoDomain: string;
+  /**
+   * Full URL of your /auth/callback page that calls exchangeCognitoCode().
+   * Defaults to window.location.origin + '/auth/callback'
+   */
+  cognitoCallbackUrl?: string;
+  /**
+   * Accesly relayer base URL.
+   * Example: "https://relayer.accesly.io" (or the EC2 public IP during testnet)
+   */
+  relayerUrl: string;
+  /** Accesly API Gateway base URL. Defaults to the deployed endpoint. */
+  apiUrl?: string;
+  /** Stellar network. Defaults to "testnet". */
   network?: 'testnet' | 'mainnet';
-  /** UI theme. Defaults to "dark" */
+  /** UI theme. Defaults to "dark". */
   theme?: 'dark' | 'light';
-  /** Called when a wallet is connected */
+  /** Called when a wallet is connected. */
   onConnect?: (wallet: WalletInfo) => void;
-  /** Called when the wallet is disconnected */
+  /** Called when the wallet is disconnected. */
   onDisconnect?: () => void;
 }
 
-/** Wallet information returned after connecting */
+// ---- Wallet ----
+
+/** Wallet info returned after connecting */
 export interface WalletInfo {
   contractId: string;
-  publicKey: string;
+  publicKey: string;       // Ed25519 public key (Stellar G... address)
   stellarAddress: string;
   email: string;
-  emailHash: string;
   createdAt: string;
   recoverySigners?: Array<{ publicKey: string; createdAt: string }>;
 }
 
-/** A single transaction record */
+// ---- Transactions ----
+
 export interface TransactionRecord {
   id: string;
   type: 'sent' | 'received' | 'swap';
@@ -37,103 +73,65 @@ export interface TransactionRecord {
   asset: string;
   counterparty: string;
   createdAt: string;
-  // Populated only for type === 'swap'
   fromAmount?: string;
   fromAsset?: string;
 }
 
-/** Auth tokens received from the popup */
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-  user: { id: string; email: string };
-}
-
-/** A non-XLM asset balance on the wallet */
 export interface AssetBalance {
-  code: string;    // e.g. "USDC", "EURC"
-  issuer: string;  // issuer Stellar address
-  balance: string; // balance string
+  code: string;
+  issuer: string;
+  balance: string;
 }
 
-/** Parameters for sending a payment */
 export interface SendPaymentParams {
   destination: string;
   amount: string;
   memo?: string;
-  /** Asset code to send. Defaults to "XLM" if omitted. */
-  assetCode?: string;
-  /** Asset issuer address. Required when assetCode is not "XLM". */
-  assetIssuer?: string;
+  assetCode?: string;    // Defaults to "XLM"
+  assetIssuer?: string;  // Required when assetCode is not "XLM"
 }
 
-/** A single asset hop in a DEX swap path */
 export interface SwapPathAsset {
   code: string;
   issuer: string | null;
 }
 
-/** Estimate returned by /api/wallet/swap-estimate */
 export interface SwapEstimate {
   destinationAmount: string;
   path: SwapPathAsset[];
 }
 
-/** Parameters for swapping assets via the Stellar DEX */
 export interface SwapParams {
-  /** Asset to sell: "XLM" | "USDC" | "EURC" */
   fromAsset: string;
-  /** Asset to buy: "XLM" | "USDC" | "EURC" */
   toAsset: string;
-  /** Exact amount to sell */
   amount: string;
-  /** Minimum amount to receive (slippage protection) */
   minReceive: string;
-  /** Intermediate DEX path from estimateSwap. Omit to let the backend find it. */
   path?: SwapPathAsset[];
 }
 
-/** Result from signing a transaction */
 export interface SignResult {
   signedXdr: string;
   txHash?: string;
 }
 
-/** The public context provided by useAccesly hook */
+// ---- Context ----
+
 export interface AcceslyContextType {
-  /** Whether the initial auth check is in progress */
   loading: boolean;
-  /** Whether a wallet is being created for a new user */
   creating: boolean;
-  /** The connected wallet info, or null if not connected */
   wallet: WalletInfo | null;
-  /** Current XLM balance string, or null */
   balance: string | null;
-  /** Non-XLM asset balances (USDC, EURC, etc.) */
   assetBalances: AssetBalance[];
-  /** Last error message, or null */
   error: string | null;
-  /** Open the auth popup and connect */
   connect: () => Promise<void>;
-  /** Disconnect and clear all state */
   disconnect: () => void;
-  /** Send a payment (XLM, USDC, or EURC) */
   sendPayment: (params: SendPaymentParams) => Promise<{ txHash: string }>;
-  /** Get a swap estimate (exchange rate + DEX path) without executing */
   estimateSwap: (fromAsset: string, toAsset: string, amount: string) => Promise<SwapEstimate>;
-  /** Swap assets using the Stellar DEX */
   swap: (params: SwapParams) => Promise<{ txHash: string }>;
-  /** Rotate wallet keys (generates new keypair, updates contract) */
   rotateKeys: () => Promise<{ newStellarAddress: string }>;
-  /** Get transaction history */
   getTransactions: (limit?: number) => Promise<TransactionRecord[]>;
-  /** Refresh the balance */
   refreshBalance: () => Promise<void>;
-  /** Refresh wallet info */
   refreshWallet: () => Promise<void>;
-  /** Sign a transaction XDR without submitting */
   signTransaction: (xdr: string) => Promise<SignResult>;
-  /** Sign and submit a transaction XDR */
   signAndSubmit: (xdr: string) => Promise<SignResult>;
 }
