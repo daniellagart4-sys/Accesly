@@ -27,7 +27,7 @@ export const handler: APIGatewayProxyHandlerV2WithJWTAuthorizer = async (event) 
   return {
     statusCode: 200,
     body: JSON.stringify({
-      f2: Buffer.from(f2).toString('base64'),
+      fragment: Buffer.from(f2).toString('base64'),
     }),
   };
 };
