@@ -2,8 +2,7 @@ VERSION = "2.0.0"
 
 NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
 
-# When domain is purchased, update to: https://accesly.io/.well-known/stellar.toml
-# and change NETWORK_PASSPHRASE to mainnet: "Public Global Stellar Network ; September 2015"
+# Mainnet: change NETWORK_PASSPHRASE to "Public Global Stellar Network ; September 2015"
 
 WEB_AUTH_ENDPOINT    = "https://7xteb2jknk.execute-api.us-east-1.amazonaws.com/sep10/auth"
 RECOVERY_SERVER      = "https://7xteb2jknk.execute-api.us-east-1.amazonaws.com/sep30"
@@ -16,8 +15,8 @@ ACCOUNTS = []
 [DOCUMENTATION]
 ORG_NAME            = "Accesly"
 ORG_DBA             = "Accesly"
-ORG_URL             = "https://accesly.vercel.app"
-ORG_LOGO            = "https://accesly.vercel.app/favicon.svg"
+ORG_URL             = "https://accesly.xyz"
+ORG_LOGO            = "https://accesly.xyz/favicon.svg"
 ORG_DESCRIPTION     = "Non-custodial crypto wallet with MPC key management and CETES yield for Mexican users"
 ORG_OFFICIAL_EMAIL  = "acceslyoficial@gmail.com"
 ORG_SUPPORT_EMAIL   = "acceslyoficial@gmail.com"
