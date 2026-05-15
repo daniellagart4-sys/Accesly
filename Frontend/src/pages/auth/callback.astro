@@ -1,0 +1,100 @@
+---
+/**
+ * /auth/callback
+ *
+ * Cognito redirects here after the user authenticates.
+ * This page exchanges the authorization code for tokens and
+ * sends them back to the SDK popup opener via postMessage, then closes.
+ */
+---
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Autenticando — Accesly</title>
+    <style>
+      body {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #0a0a0a;
+        font-family: system-ui, sans-serif;
+        color: #fff;
+      }
+      .wrap { text-align: center; gap: 16px; display: flex; flex-direction: column; align-items: center; }
+      .spinner {
+        width: 32px; height: 32px;
+        border: 3px solid #333;
+        border-top-color: #7c3aed;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      p { margin: 0; color: #888; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="spinner"></div>
+      <p>Autenticando…</p>
+    </div>
+
+    <script>
+      (async () => {
+        const COGNITO_DOMAIN    = 'accesly.auth.us-east-1.amazoncognito.com';
+        const COGNITO_CLIENT_ID = '72q7gchu9bfnarslc9bl8paqsv';
+        const REDIRECT_URI      = window.location.origin + '/auth/callback';
+
+        const send = (msg: object) =>
+          window.opener?.postMessage(msg, window.location.origin);
+
+        const params = new URLSearchParams(window.location.search);
+        const code   = params.get('code');
+        const error  = params.get('error');
+
+        if (error) {
+          send({ type: 'accesly-cognito-error', error });
+          window.close();
+          return;
+        }
+
+        if (!code) {
+          // Not a redirect — nothing to do
+          window.close();
+          return;
+        }
+
+        try {
+          const res = await fetch(`https://${COGNITO_DOMAIN}/oauth2/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              grant_type:   'authorization_code',
+              client_id:    COGNITO_CLIENT_ID,
+              code,
+              redirect_uri: REDIRECT_URI,
+            }),
+          });
+
+          if (!res.ok) throw new Error(`Token exchange failed (${res.status})`);
+
+          const data = await res.json();
+          send({
+            type: 'accesly-cognito-success',
+            payload: {
+              accessToken:  data.access_token,
+              idToken:      data.id_token,
+              refreshToken: data.refresh_token,
+              expiresAt:    Date.now() + data.expires_in * 1000,
+            },
+          });
+        } catch (err: any) {
+          send({ type: 'accesly-cognito-error', error: err.message });
+        } finally {
+          window.close();
+        }
+      })();
+    </script>
+  </body>
+</html>
