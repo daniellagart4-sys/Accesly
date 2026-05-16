@@ -137,7 +137,7 @@ for (const name of LAMBDAS) {
     ETHERFUSE_API_URL:         process.env.ETHERFUSE_API_URL ?? 'https://api.etherfuse.com',
     ETHERFUSE_API_KEY:         process.env.ETHERFUSE_API_KEY ?? '',
     ETHERFUSE_WEBHOOK_SECRET:  process.env.ETHERFUSE_WEBHOOK_SECRET ?? '',
-    SES_FROM_EMAIL:            process.env.SES_FROM_EMAIL ?? 'noreply@accesly.io',
+    SES_FROM_EMAIL:            process.env.SES_FROM_EMAIL ?? 'noreply@accesly.xyz',
     RECOVERY_ENABLED:          'false',
   };
 
