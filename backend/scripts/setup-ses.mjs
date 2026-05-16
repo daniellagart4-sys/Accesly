@@ -1,32 +1,38 @@
 #!/usr/bin/env node
-// Verifies sender email address in SES
-// Run: AWS_REGION=us-east-1 node scripts/setup-ses.mjs
-// When you have a domain: AWS_REGION=us-east-1 SES_FROM_EMAIL=noreply@accesly.io node scripts/setup-ses.mjs
+// Verifies a domain in SES and generates DKIM DNS records
+// Run: AWS_REGION=us-east-1 SES_DOMAIN=accesly.xyz node scripts/setup-ses.mjs
+// Then add the printed CNAME records to your DNS provider.
 
 import {
   SESClient,
-  VerifyEmailIdentityCommand,
+  VerifyDomainIdentityCommand,
+  VerifyDomainDkimCommand,
   GetIdentityVerificationAttributesCommand,
 } from '@aws-sdk/client-ses';
 
 const region = process.env.AWS_REGION ?? 'us-east-1';
-const email  = process.env.SES_FROM_EMAIL ?? 'acceslyoficial@gmail.com';
+const domain = process.env.SES_DOMAIN ?? 'accesly.xyz';
+const ses    = new SESClient({ region });
 
-const ses = new SESClient({ region });
+// 1. Verify domain identity
+const { VerificationToken } = await ses.send(new VerifyDomainIdentityCommand({ Domain: domain }));
+console.log(`✓ Domain verification initiated: ${domain}`);
+console.log(`\nAdd this TXT record in Namecheap DNS:`);
+console.log(`  Type: TXT`);
+console.log(`  Host: _amazonses`);
+console.log(`  Value: ${VerificationToken}\n`);
 
-await ses.send(new VerifyEmailIdentityCommand({ EmailAddress: email }));
-console.log(`✓ Verification email sent to: ${email}`);
-console.log(`  → Open the inbox and click the verification link.`);
-
-const status = await ses.send(new GetIdentityVerificationAttributesCommand({
-  Identities: [email],
-}));
-
-const attr = status.VerificationAttributes?.[email];
-console.log(`\nCurrent status: ${attr?.VerificationStatus ?? 'Pending'}`);
-
-if (attr?.VerificationStatus === 'Success') {
-  console.log(`✓ Verified — SES ready to send from ${email}`);
-} else {
-  console.log(`Re-run after clicking the verification link to confirm.`);
+// 2. Generate DKIM tokens
+const { DkimTokens } = await ses.send(new VerifyDomainDkimCommand({ Domain: domain }));
+console.log(`Add these 3 CNAME records in Namecheap DNS (for DKIM):`);
+for (const token of DkimTokens) {
+  console.log(`  Type: CNAME`);
+  console.log(`  Host: ${token}._domainkey`);
+  console.log(`  Value: ${token}.dkim.amazonses.com\n`);
 }
+
+// 3. Check current status
+const status = await ses.send(new GetIdentityVerificationAttributesCommand({ Identities: [domain] }));
+const attr   = status.VerificationAttributes?.[domain];
+console.log(`Current status: ${attr?.VerificationStatus ?? 'Pending'}`);
+console.log(`\nAfter adding the DNS records, re-run this script to confirm verification.`);
