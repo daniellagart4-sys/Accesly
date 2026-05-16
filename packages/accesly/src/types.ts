@@ -37,7 +37,7 @@ export interface AcceslyConfig {
   cognitoCallbackUrl?: string;
   /**
    * Accesly relayer base URL.
-   * Example: "https://relayer.accesly.xyz"
+   * Example: "https://relayer.accesly.io" (or the EC2 public IP during testnet)
    */
   relayerUrl: string;
   /** Accesly API Gateway base URL. Defaults to the deployed endpoint. */

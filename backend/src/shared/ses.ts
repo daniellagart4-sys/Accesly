@@ -35,7 +35,7 @@ export async function sendTransactionConfirmation(params: {
     `USDC: ${params.amountUsdc}`,
     `ID:   ${params.txId}`,
     ``,
-    `Si no reconoces esta operación, contacta a soporte@accesly.xyz`,
+    `Si no reconoces esta operación, contacta a soporte@accesly.io`,
   ].join('\n');
 
   const html = `
@@ -47,7 +47,7 @@ export async function sendTransactionConfirmation(params: {
     <tr><td style="padding:8px;color:#666">ID de transacción</td><td style="padding:8px;font-family:monospace;font-size:12px">${params.txId}</td></tr>
   </table>
   <p style="color:#999;font-size:12px;margin-top:24px">
-    Si no reconoces esta operación, escríbenos a <a href="mailto:soporte@accesly.xyz">soporte@accesly.xyz</a>
+    Si no reconoces esta operación, escríbenos a <a href="mailto:soporte@accesly.io">soporte@accesly.io</a>
   </p>
 </div>`;
 
@@ -72,7 +72,7 @@ export async function sendSecurityAlert(params: {
     label,
     params.detail,
     ``,
-    `Si no fuiste tú, contacta a soporte@accesly.xyz de inmediato.`,
+    `Si no fuiste tú, contacta a soporte@accesly.io de inmediato.`,
   ].join('\n');
 
   const html = `
@@ -81,7 +81,7 @@ export async function sendSecurityAlert(params: {
   <p style="font-weight:600">${label}</p>
   <p style="color:#555">${params.detail}</p>
   <p style="color:#999;font-size:12px;margin-top:24px">
-    Si no fuiste tú, escríbenos de inmediato a <a href="mailto:soporte@accesly.xyz">soporte@accesly.xyz</a>
+    Si no fuiste tú, escríbenos de inmediato a <a href="mailto:soporte@accesly.io">soporte@accesly.io</a>
   </p>
 </div>`;
 

@@ -41,7 +41,7 @@ if (api) {
     Name: 'accesly-backend',
     ProtocolType: 'HTTP',
     CorsConfiguration: {
-      AllowOrigins: ['https://accesly.xyz', 'https://www.accesly.xyz'],
+      AllowOrigins: ['https://app.accesly.io', 'https://accesly.vercel.app'],
       AllowMethods: ['GET', 'POST', 'OPTIONS'],
       AllowHeaders: ['Authorization', 'Content-Type', 'X-App-Id'],
       MaxAge: 300,
