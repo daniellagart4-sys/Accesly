@@ -43,7 +43,7 @@ async function handleKycStart(userId: string, email: string) {
     body: JSON.stringify({
       external_id: userId,
       email,
-      redirect_url: 'https://app.accesly.io/kyc/callback',
+      redirect_url: 'https://accesly.xyz/kyc/callback',
     }),
     signal: AbortSignal.timeout(10_000),
   });
