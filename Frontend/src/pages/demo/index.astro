@@ -1,50 +1,36 @@
 ---
 /**
- * demo/index.astro - Wallet App Demo
+ * /demo — entry del wallet demo basado en `@accesly/react`.
  *
- * Renders the App component (React island) which handles:
- * - Google OAuth login via Supabase
- * - Automatic wallet creation on first login
- * - Wallet dashboard for returning users
+ * Reemplaza la implementación Supabase legacy (que sigue en
+ * `src/components/App.tsx` por si queremos volverla en algún punto —
+ * el archivo NO se borró, solo dejó de referenciarse acá).
  *
- * The `client:load` directive hydrates the React component immediately
- * on page load, enabling the interactive auth flow.
+ * El SPA monta vía `client:only="react"` porque depende de:
+ *  - `IndexedDbDeviceStore` (necesita `window.indexedDB`)
+ *  - `BrowserRouter` con `basename="/demo"` (no SSR-renderable)
+ *  - WebAuthn `navigator.credentials` (browser-only)
+ *
+ * Subrutas como `/demo/signin`, `/demo/wallet`, etc., las captura
+ * `src/pages/demo/[...path].astro` que monta el mismo `<DemoEntry>`.
+ * React Router con `basename="/demo"` se encarga del routing client-side
+ * dentro del SPA.
  */
 import Layout from '../../layouts/Layout.astro';
-import { App } from '../../components/App';
+import { DemoEntry } from '../../components/demo/DemoEntry';
 ---
 
-<Layout title="Accesly - Web3 Wallet Demo">
-  <App client:load />
+<Layout title="Accesly — Wallet demo">
+  <div id="accesly-demo-root">
+    <DemoEntry client:only="react" />
+  </div>
 </Layout>
 
-<style is:global>
-  /* Spinner animation used by loading states in React components */
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  /* Modal/panel fade-in */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  /* Modal/panel slide-up entrance */
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
+<style>
+  /* El SPA renderiza su propio chrome. Quitamos cualquier padding/margin
+   * del Layout host para que el demo se vea full-bleed. */
+  #accesly-demo-root {
+    min-height: 100vh;
+    width: 100%;
   }
 </style>

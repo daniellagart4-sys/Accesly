@@ -1,0 +1,31 @@
+---
+/**
+ * Catch-all para `/demo/*`. Monta el mismo `<DemoEntry>` que `/demo`,
+ * y React Router con `basename="/demo"` se encarga de matchear la
+ * ruta exacta (/demo/signin, /demo/wallet, /demo/auth/callback, etc.).
+ *
+ * Esto es necesario porque Astro hace SSR + file-based routing — sin
+ * este catch-all, navegar directo a `/demo/wallet` daría 404 del server
+ * antes de que el SPA tenga chance de hidratar.
+ *
+ * En `output: 'server'` esto se sirve via Vercel function por request,
+ * lo cual está bien para un demo. Si el costo de cold-starts importa,
+ * podríamos meter `export const prerender = true` (pero entonces el SPA
+ * tendría que generar todas las rutas en build, lo cual es overkill).
+ */
+import Layout from '../../layouts/Layout.astro';
+import { DemoEntry } from '../../components/demo/DemoEntry';
+---
+
+<Layout title="Accesly — Wallet demo">
+  <div id="accesly-demo-root">
+    <DemoEntry client:only="react" />
+  </div>
+</Layout>
+
+<style>
+  #accesly-demo-root {
+    min-height: 100vh;
+    width: 100%;
+  }
+</style>
