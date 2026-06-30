@@ -1,0 +1,36 @@
+---
+/**
+ * /demo — entry del wallet demo basado en `@accesly/react`.
+ *
+ * Reemplaza la implementación Supabase legacy (que sigue en
+ * `src/components/App.tsx` por si queremos volverla en algún punto —
+ * el archivo NO se borró, solo dejó de referenciarse acá).
+ *
+ * El SPA monta vía `client:only="react"` porque depende de:
+ *  - `IndexedDbDeviceStore` (necesita `window.indexedDB`)
+ *  - `BrowserRouter` con `basename="/demo"` (no SSR-renderable)
+ *  - WebAuthn `navigator.credentials` (browser-only)
+ *
+ * Subrutas como `/demo/signin`, `/demo/wallet`, etc., las captura
+ * `src/pages/demo/[...path].astro` que monta el mismo `<DemoEntry>`.
+ * React Router con `basename="/demo"` se encarga del routing client-side
+ * dentro del SPA.
+ */
+import Layout from '../../layouts/Layout.astro';
+import { DemoEntry } from '../../components/demo/DemoEntry';
+---
+
+<Layout title="Accesly — Wallet demo">
+  <div id="accesly-demo-root">
+    <DemoEntry client:only="react" />
+  </div>
+</Layout>
+
+<style>
+  /* El SPA renderiza su propio chrome. Quitamos cualquier padding/margin
+   * del Layout host para que el demo se vea full-bleed. */
+  #accesly-demo-root {
+    min-height: 100vh;
+    width: 100%;
+  }
+</style>

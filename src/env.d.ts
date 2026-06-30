@@ -5,6 +5,11 @@
  * PUBLIC_ prefix = accessible in browser. Others = server-only.
  */
 interface ImportMetaEnv {
+  // Accesly SDK demo wallet (público — corre en el browser).
+  // App ID del dashboard dev.accesly.xyz para el demo bajo /demo. Si no se
+  // setea, el SDK cae al placeholder legacy "accesly-example".
+  readonly PUBLIC_ACCESLY_APP_ID: string;
+
   // Supabase (public = browser-accessible)
   readonly PUBLIC_SUPABASE_URL: string;
   readonly PUBLIC_SUPABASE_ANON_KEY: string;

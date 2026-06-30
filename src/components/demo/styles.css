@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================
+ * Accesly brand tokens — light (default) + dark
+ * Mirrors el Brand Book v3.0 del mockup. `useBranding()` del SDK
+ * sigue escribiendo `--accesly-primary` en :root al boot — lo
+ * mapeamos a `--lav` para que el dashboard pueda overridear.
+ * =============================================================*/
+:root {
+  --lav: #8b6ce7;
+  --lav-300: #c9b5f8;
+  --lav-400: #a98df0;
+  --lav-600: #7055c7;
+  --lav-ink: #7055c7;
+
+  --mint: #45c9a8;
+  --mint-300: #9dead5;
+  --mint-400: #6ddcbf;
+  --mint-600: #34a88b;
+  --mint-ink: #1c8e72;
+
+  --bg: #efecf5;
+  --sheet: #ffffff;
+  --card: #ffffff;
+  --card2: #f3f0f8;
+
+  --ink: #261e33;
+  --ink2: #6b5f78;
+  --ink3: #9e95a7;
+
+  --line: rgba(38, 30, 51, 0.1);
+  --line2: rgba(38, 30, 51, 0.06);
+
+  --lav-soft: rgba(139, 108, 231, 0.12);
+  --mint-soft: rgba(69, 201, 168, 0.14);
+  --sky-soft: rgba(123, 164, 247, 0.15);
+  --sky-ink: #3f73d6;
+  --blush-soft: rgba(255, 143, 171, 0.17);
+  --blush-ink: #d1567e;
+  --amber-soft: rgba(245, 200, 66, 0.22);
+  --amber-ink: #946c10;
+
+  --grad: linear-gradient(135deg, #a98df0, #45c9a8);
+
+  --error: #f47174;
+  --warning: #f5c842;
+  --info: #7ba4f7;
+
+  --shadow-card: 0 2px 10px rgba(38, 30, 51, 0.07);
+  --glow-lav: 0 12px 34px rgba(139, 108, 231, 0.28);
+  --glow-mint: 0 12px 34px rgba(69, 201, 168, 0.24);
+}
+
+html.dark {
+  --lav-ink: #c9b5f8;
+  --mint-ink: #6ddcbf;
+  --bg: #16121e;
+  --sheet: #1e1a29;
+  --card: #272031;
+  --card2: #312840;
+  --ink: #faf8fc;
+  --ink2: #a79eb5;
+  --ink3: #7a6e8c;
+  --line: rgba(255, 255, 255, 0.085);
+  --line2: rgba(255, 255, 255, 0.05);
+  --lav-soft: rgba(139, 108, 231, 0.18);
+  --mint-soft: rgba(69, 201, 168, 0.16);
+  --sky-soft: rgba(123, 164, 247, 0.2);
+  --sky-ink: #a8caff;
+  --blush-soft: rgba(255, 143, 171, 0.2);
+  --blush-ink: #ffb3c6;
+  --amber-soft: rgba(245, 200, 66, 0.18);
+  --amber-ink: #f0ce63;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --glow-lav: 0 12px 38px rgba(139, 108, 231, 0.4);
+  --glow-mint: 0 12px 38px rgba(69, 201, 168, 0.34);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    font-family:
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    transition:
+      background 0.35s ease,
+      color 0.35s ease;
+  }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .accesly-btn {
+    cursor: pointer;
+    transition:
+      transform 0.12s ease,
+      filter 0.15s ease,
+      background 0.15s ease;
+  }
+  .accesly-btn:active {
+    transform: scale(0.97);
+  }
+  .accesly-btn:focus-visible {
+    outline: 2.5px solid var(--lav-400);
+    outline-offset: 2px;
+  }
+  .accesly-key {
+    cursor: pointer;
+    transition:
+      background 0.12s ease,
+      transform 0.08s ease;
+    color: var(--ink);
+  }
+  .accesly-key:hover {
+    background: var(--lav-soft);
+  }
+  .accesly-key:active {
+    transform: scale(0.93);
+    background: var(--lav-soft);
+  }
+}
+
+@keyframes scr {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.78);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.anim-scr {
+  animation: scr 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-pop {
+  animation: pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
