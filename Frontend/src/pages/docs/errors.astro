@@ -1,0 +1,388 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Errores" section="SDK y API" pageId="errors">
+  <h1>Catálogo de errores</h1>
+  <p class="lead">
+    Referencia de errores del SDK y la API. Cada uno con código, causa típica y cómo remediarlo.
+  </p>
+
+  <h2>Cómo se ven los errores</h2>
+
+  <p>El SDK expone clases de error específicas. Podés hacer <code>instanceof</code> para branching preciso:</p>
+
+  <pre><code><span class="k">import</span> &#123;
+  WalletNotEnrolledError,
+  GAddressNotBootstrappedError,
+  WalletAlreadyExistsError,
+  RateLimitError,
+&#125; <span class="k">from</span> <span class="s">'@accesly/react'</span>;
+
+<span class="k">try</span> &#123;
+  <span class="k">await</span> <span class="n">tx</span>.<span class="f">swap</span>(<span class="n">args</span>);
+&#125; <span class="k">catch</span> (<span class="n">err</span>) &#123;
+  <span class="k">if</span> (<span class="n">err</span> <span class="k">instanceof</span> <span class="n">WalletNotEnrolledError</span>) &#123;
+    <span class="c">// El SDK auto activa el asset y reintenta</span>
+    <span class="c">// Si estás en flow manual, hacé wallet.activateAsset(err.asset)</span>
+  &#125;
+  <span class="k">if</span> (<span class="n">err</span> <span class="k">instanceof</span> <span class="n">RateLimitError</span>) &#123;
+    <span class="c">// Retry después de err.retryAfterSeconds</span>
+  &#125;
+&#125;</code></pre>
+
+  <p>Del lado API REST, todo error viene con esta shape:</p>
+
+  <pre><code>&#123;
+  <span class="s">"error"</span>: <span class="s">"WalletNotEnrolled"</span>,
+  <span class="s">"code"</span>: <span class="s">"WALLET_NOT_ENROLLED"</span>,
+  <span class="s">"message"</span>: <span class="s">"Descriptivo, en español o inglés según Accept-Language"</span>,
+  <span class="s">"details"</span>: &#123; <span class="s">"asset"</span>: <span class="s">"USDC"</span> &#125;
+&#125;</code></pre>
+
+  <h2>Errores de autenticación</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Clase / código</th>
+        <th>HTTP</th>
+        <th>Causa</th>
+        <th>Remediation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>AuthError</code></td>
+        <td>401</td>
+        <td>JWT expirado o inválido</td>
+        <td>Refrescar sesión con <code>auth.signIn</code> o <code>signInWithGoogle</code></td>
+      </tr>
+      <tr>
+        <td><code>InvalidCredentialsError</code></td>
+        <td>401</td>
+        <td>Email o password mal</td>
+        <td>Pedir al user que corrija</td>
+      </tr>
+      <tr>
+        <td><code>UserNotConfirmedError</code></td>
+        <td>403</td>
+        <td>User signup sin confirmar email</td>
+        <td>Llamar <code>auth.confirmSignUp</code> con el código del email</td>
+      </tr>
+      <tr>
+        <td><code>UserAlreadyExistsError</code></td>
+        <td>409</td>
+        <td>Email ya registrado en Cognito</td>
+        <td>Sugerir login en vez de signup</td>
+      </tr>
+      <tr>
+        <td><code>redirect_mismatch</code> (Cognito)</td>
+        <td>N/A</td>
+        <td>Redirect URI no registrada</td>
+        <td>Agregar URL en Settings del app del dashboard</td>
+      </tr>
+      <tr>
+        <td><code>unauthorized_client</code> (Cognito)</td>
+        <td>N/A</td>
+        <td>OAuth flow no habilitado en Cognito client</td>
+        <td>Contactar soporte Accesly. Bug del setup del app.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Errores de wallet</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Clase / código</th>
+        <th>HTTP</th>
+        <th>Causa</th>
+        <th>Remediation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>WalletAlreadyExistsError</code></td>
+        <td>409</td>
+        <td>Backend ya tiene wallet para este user pero device no tiene credential local</td>
+        <td>Dispara flow de recovery. El kit lo hace auto en <code>&lt;CreateWalletFlow /&gt;</code> con <code>onRecoverInstead</code>.</td>
+      </tr>
+      <tr>
+        <td><code>WalletNotEnrolledError</code></td>
+        <td>409</td>
+        <td>Rule biometric tx missing para el asset</td>
+        <td>Auto: <code>wallet.activateAsset(err.asset)</code> + retry. El SDK lo hace transparente con <code>withAutoEnroll</code>.</td>
+      </tr>
+      <tr>
+        <td><code>GAddressNotBootstrappedError</code></td>
+        <td>409</td>
+        <td>G address bridge no existe</td>
+        <td>Auto: <code>wallet.bootstrapG(material)</code> + retry.</td>
+      </tr>
+      <tr>
+        <td><code>GMissingTrustlineError</code></td>
+        <td>409</td>
+        <td>G address existe pero sin trustline del asset</td>
+        <td>Auto: <code>wallet.addTrustlineG</code> + retry.</td>
+      </tr>
+      <tr>
+        <td>Sin CredentialRecord local</td>
+        <td>N/A</td>
+        <td>IndexedDB vacío. Device nuevo o cache borrado.</td>
+        <td>Recovery flow.</td>
+      </tr>
+      <tr>
+        <td>Wallet not on chain</td>
+        <td>N/A</td>
+        <td>Bootstrap disparó POST pero Soroban aún no confirma</td>
+        <td>Poll con <code>useWalletStatus</code>. Puede tardar hasta 30s.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Errores de transacciones</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Causa</th>
+        <th>Remediation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>INSUFFICIENT_FUNDS</code></td>
+        <td>Balance del user menor que amount + fees</td>
+        <td>Mostrar balance actual, sugerir fondear con on ramp</td>
+      </tr>
+      <tr>
+        <td><code>SPENDING_LIMIT_EXCEEDED</code></td>
+        <td>Superás el spending limit rule del contract</td>
+        <td>Warning al user, hacerlo esperar el reset del window o reducir monto</td>
+      </tr>
+      <tr>
+        <td><code>PATH_NOT_FOUND</code></td>
+        <td>Soroswap sin liquidity para el par</td>
+        <td>Auto: fallback a SDEX. El kit lo hace transparente.</td>
+      </tr>
+      <tr>
+        <td><code>SLIPPAGE_EXCEEDED</code></td>
+        <td>Precio movió más allá del slippage tolerance</td>
+        <td>Recotizar, aumentar slippage o cancelar</td>
+      </tr>
+      <tr>
+        <td><code>tx_bad_seq</code> (Horizon)</td>
+        <td>Sequence number stale</td>
+        <td>Retry, el SDK re fetch el sequence</td>
+      </tr>
+      <tr>
+        <td><code>tx_bad_auth</code> (Horizon)</td>
+        <td>Firma no matchea el signer del source account</td>
+        <td>Suele indicar recovery mal terminada o G address desincronizada. Ver <a href="/docs/recovery">Recovery</a>.</td>
+      </tr>
+      <tr>
+        <td><code>aes/gcm: invalid ghash tag</code></td>
+        <td>Descifrar F1 o F2 con llave equivocada</td>
+        <td>Indica desync entre backend y local. Trigger recovery.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Errores de recovery</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Causa</th>
+        <th>Remediation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>otp-not-found-or-expired</code></td>
+        <td>OTP consumido, expirado (10 min) o nunca enviado</td>
+        <td>Pedir OTP nuevo</td>
+      </tr>
+      <tr>
+        <td><code>wrong-code</code></td>
+        <td>OTP incorrecto</td>
+        <td>Reintentar hasta 5 veces</td>
+      </tr>
+      <tr>
+        <td><code>too-many-attempts</code></td>
+        <td>5 intentos fallidos del mismo OTP</td>
+        <td>Esperar TTL y pedir nuevo</td>
+      </tr>
+      <tr>
+        <td><code>invalid-jwt</code></td>
+        <td>recoveryJwt expirado (5 min) o firma inválida</td>
+        <td>Rehacer verifyOtp</td>
+      </tr>
+      <tr>
+        <td><code>no-wallet-for-email</code></td>
+        <td>Email no tiene wallet asociada</td>
+        <td>User se equivocó de email o no tiene cuenta. Sugerir signup.</td>
+      </tr>
+      <tr>
+        <td><code>no-wallet-for-current-cognito-user</code></td>
+        <td>Cognito sub actual no tiene wallet, pero email sí (probable dual user)</td>
+        <td>Usar el mismo provider de auth con el que creó la wallet originalmente</td>
+      </tr>
+      <tr>
+        <td><code>email-hash-mismatch</code></td>
+        <td>JWT tiene email hash distinto al del usuario actual (posible token reuse)</td>
+        <td>Rehacer flow completo</td>
+      </tr>
+      <tr>
+        <td>Passphrase equivocada</td>
+        <td>PBKDF2(passphrase) no descifra F3</td>
+        <td>Reintentar. Si el user no la recuerda, no hay recovery posible.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Errores de KYC y fiat</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Causa</th>
+        <th>Remediation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>KYC_NOT_STARTED</code></td>
+        <td>User no completó KYC en Dynerox</td>
+        <td>Dispara <code>&lt;AddFundsFlow /&gt;</code>, el kit muestra formulario</td>
+      </tr>
+      <tr>
+        <td><code>KYC_PENDING_IDENTITY</code></td>
+        <td>User completó datos pero falta liveness</td>
+        <td>Abrir <code>authorizationUrl</code> de Dynerox</td>
+      </tr>
+      <tr>
+        <td><code>KYC_INACTIVE</code></td>
+        <td>Dynerox rechazó al user (OFAC, mismatch, etc.)</td>
+        <td>Escalación manual con soporte de Dynerox</td>
+      </tr>
+      <tr>
+        <td><code>CLABE_INVALID</code></td>
+        <td>CLABE mal formada o no reconocida</td>
+        <td>Validar 18 dígitos + banco válido antes de submit</td>
+      </tr>
+      <tr>
+        <td><code>CURP_INVALID</code></td>
+        <td>CURP no matchea con nombre + fecha de nacimiento</td>
+        <td>Pedir al user que revise sus datos</td>
+      </tr>
+      <tr>
+        <td><code>country-not-supported</code></td>
+        <td>User no es de México</td>
+        <td>Deshabilitar on ramp UI, sugerir transferencia externa</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Errores de rate limit</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Clase</th>
+        <th>HTTP</th>
+        <th>Header</th>
+        <th>Remediation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>RateLimitError</code></td>
+        <td>429</td>
+        <td><code>Retry-After: &lt;seconds&gt;</code></td>
+        <td>Backoff exponencial. El SDK maneja retries auto para GETs idempotentes.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Errores del backend</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Clase</th>
+        <th>HTTP</th>
+        <th>Causa</th>
+        <th>Remediation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>ServerError</code></td>
+        <td>500</td>
+        <td>Bug en Lambda o dependencia externa (Soroban RPC caído)</td>
+        <td>Retry. Si persiste, revisar <a href="/docs/api-reference#status">/status endpoint</a>.</td>
+      </tr>
+      <tr>
+        <td><code>NetworkError</code></td>
+        <td>N/A (SDK side)</td>
+        <td>Timeout o CORS</td>
+        <td>Retry con backoff. Verificar conectividad.</td>
+      </tr>
+      <tr>
+        <td><code>ValidationError</code></td>
+        <td>400</td>
+        <td>Body mal formado o campo requerido missing</td>
+        <td>Ver <code>errors</code> array en la response para detalle campo por campo</td>
+      </tr>
+      <tr>
+        <td><code>NotFoundError</code></td>
+        <td>404</td>
+        <td>Recurso no existe</td>
+        <td>Verificar el ID / address / handle</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Estrategia general de error handling</h2>
+
+  <p>Para tu error boundary genérico, cubrí estos casos en este orden:</p>
+
+  <ol>
+    <li><strong>RateLimitError</strong>: mensaje "Muchos intentos, esperá X segundos" con countdown.</li>
+    <li><strong>AuthError</strong>: redirect a login.</li>
+    <li><strong>WalletAlreadyExistsError</strong>: redirect a <code>/recover</code>.</li>
+    <li><strong>NetworkError</strong>: banner "Sin conexión, reintentá".</li>
+    <li><strong>ServerError</strong>: banner "Servicio con problemas, reintentá en un rato".</li>
+    <li><strong>Default</strong>: mensaje del error + link a soporte.</li>
+  </ol>
+
+  <p>
+    Nunca mostrés stack traces raw al usuario. Loguealos a Sentry o similar y mostrá copy amigable.
+  </p>
+
+  <h2>Reportar bugs</h2>
+
+  <p>
+    Si encontrás un error que no está en este catálogo o un mensaje confuso, abrí issue en <a href="https://github.com/Accesly" target="_blank" rel="noopener">github.com/Accesly</a> con:
+  </p>
+
+  <ul>
+    <li>Código de error + HTTP status.</li>
+    <li>Payload que disparó el error.</li>
+    <li>Response completa.</li>
+    <li>Request ID (header <code>x-amzn-RequestId</code>) para que podamos buscarlo en CloudWatch.</li>
+  </ul>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li><a href="/docs/sdk-reference">SDK Reference</a>: métodos que pueden tirar cada error.</li>
+    <li><a href="/docs/api-reference">API Reference</a>: HTTP status codes por endpoint.</li>
+  </ul>
+</DocsLayout>

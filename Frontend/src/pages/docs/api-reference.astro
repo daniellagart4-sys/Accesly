@@ -1,0 +1,289 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="API Reference" section="SDK y API" pageId="api-reference">
+  <h1>API REST Reference</h1>
+  <p class="lead">
+    Endpoints públicos del backend Accesly. La mayoría de integradores no toca esto directamente porque el SDK envuelve todo. Consulta esta referencia si necesitás llamar al backend desde un lenguaje distinto a JavaScript o desde tu propio servidor.
+  </p>
+
+  <h2>Base URL</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr><th>Environment</th><th>URL</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Development</td><td><code>https://api.accesly.xyz</code></td></tr>
+      <tr><td>Staging</td><td><code>https://api-staging.accesly.xyz</code></td></tr>
+      <tr><td>Producción</td><td><code>https://api.accesly.xyz</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Autenticación</h2>
+
+  <p>La API usa dos mecanismos de auth según el endpoint:</p>
+
+  <h3>JWT Cognito (usuario end)</h3>
+
+  <p>
+    La mayoría de endpoints requieren un JWT válido de Cognito en el header <code>Authorization: Bearer &lt;jwt&gt;</code>. El JWT se obtiene del flow de signin.
+  </p>
+
+  <pre><code><span class="n">curl</span> https://api.accesly.xyz/wallets \
+  -H <span class="s">"Authorization: Bearer eyJhbGciOi..."</span></code></pre>
+
+  <h3>API keys (integrador)</h3>
+
+  <p>
+    Endpoints de <code>/v1/*</code> son server to server. Se autentican con API key del integrador en el header <code>x-accesly-api-key: sk_live_...</code>. Estas keys se crean en el dashboard.
+  </p>
+
+  <pre><code><span class="n">curl</span> https://api.accesly.xyz/v1/wallets/CBUS... \
+  -H <span class="s">"x-accesly-api-key: sk_live_abc123..."</span></code></pre>
+
+  <h2>Errores comunes</h2>
+
+  <p>Todas las responses de error tienen esta shape:</p>
+
+  <pre><code>&#123;
+  <span class="s">"error"</span>: <span class="s">"WalletNotEnrolled"</span>,
+  <span class="s">"code"</span>: <span class="s">"WALLET_NOT_ENROLLED"</span>,
+  <span class="s">"message"</span>: <span class="s">"The wallet is not enrolled for asset USDC."</span>,
+  <span class="s">"details"</span>: &#123; <span class="s">"asset"</span>: <span class="s">"USDC"</span> &#125;
+&#125;</code></pre>
+
+  <p>Catálogo completo de errores en <a href="/docs/errors">Errores</a>.</p>
+
+  <h2>Wallet</h2>
+
+  <h3>GET /wallets</h3>
+
+  <p>Devuelve la wallet del usuario Cognito autenticado, o null si no tiene.</p>
+
+  <pre><code><span class="c">// Response 200</span>
+&#123;
+  <span class="s">"walletAddress"</span>: <span class="s">"CBUSYQ6AW..."</span>,
+  <span class="s">"appId"</span>: <span class="s">"app_d_prueba1_j42h0"</span>,
+  <span class="s">"createdAt"</span>: <span class="s">"2026-06-29T22:36:20.381Z"</span>,
+  <span class="s">"onChain"</span>: <span class="k">true</span>,
+  <span class="s">"deployedTxTargetsCount"</span>: 3,
+  <span class="s">"gAddress"</span>: <span class="s">"GD6EVND7..."</span>,
+  <span class="s">"bootstrapGComplete"</span>: <span class="k">true</span>
+&#125;</code></pre>
+
+  <h3>POST /wallets</h3>
+
+  <p>Crea una wallet nueva. Body:</p>
+
+  <pre><code>&#123;
+  <span class="s">"appId"</span>: <span class="s">"app_d_..."</span>,
+  <span class="s">"pubkeyEd25519"</span>: <span class="s">"&lt;hex 64&gt;"</span>,
+  <span class="s">"secp256r1Pubkey"</span>: <span class="s">"&lt;hex 130&gt;"</span>,
+  <span class="s">"emailCommitment"</span>: <span class="s">"&lt;hex 64&gt;"</span>,
+  <span class="s">"fragmentF2"</span>: &#123; <span class="s">"ciphertext"</span>, <span class="s">"nonce"</span>, <span class="s">"algo"</span> &#125;,
+  <span class="s">"fragmentF3"</span>: &#123; <span class="s">"ciphertext"</span>, <span class="s">"nonce"</span>, <span class="s">"algo"</span> &#125;,
+  <span class="s">"emailHash"</span>: <span class="s">"&lt;hex 64&gt;"</span>,
+  <span class="s">"recoverySalt"</span>: <span class="s">"&lt;base64&gt;"</span>
+&#125;</code></pre>
+
+  <h3>POST /wallets/fragment-2</h3>
+
+  <p>Descarga F2 envuelto en session key ECDH efímera. Body: <code>&#123; "clientEphemeralPubkey": "&lt;base64 X25519&gt;" &#125;</code>. Response tiene <code>&#123; nonce, ciphertext, authTag, serverEphemeralPubkey &#125;</code>.</p>
+
+  <h3>GET /wallets/&#123;address&#125;/balance</h3>
+
+  <p>Balance XLM + USDC + otros trustlines de la wallet. Endpoint público (no requiere auth), útil para explorers públicos.</p>
+
+  <h3>GET /wallets/&#123;address&#125;/history</h3>
+
+  <p>Historia de transacciones paginada. Query params: <code>limit</code>, <code>cursor</code>.</p>
+
+  <h2>Transacciones</h2>
+
+  <h3>POST /wallets/tx/simulate</h3>
+
+  <p>Backend arma una tx unsigned. Body:</p>
+
+  <pre><code>&#123;
+  <span class="s">"kind"</span>: <span class="s">"transfer"</span>,
+  <span class="s">"asset"</span>: <span class="s">"USDC"</span>,
+  <span class="s">"destination"</span>: <span class="s">"CBXY..."</span>,
+  <span class="s">"amount"</span>: <span class="s">"10.5"</span>
+&#125;</code></pre>
+
+  <p>Response incluye <code>unsignedXdr</code>, <code>signaturePayloadHashBase64</code>, <code>contextRuleIds</code>, <code>placeholderAuthEntryXdr</code>. El SDK usa esto para armar la firma client side.</p>
+
+  <h3>POST /wallets/tx/submit</h3>
+
+  <p>Body: <code>&#123; "unsignedXdr", "signedAuthEntryXdr" &#125;</code>. Backend agrega fee bump con KMS relayer, submitea a Soroban RPC, devuelve <code>&#123; "txHash", "status" &#125;</code>.</p>
+
+  <h2>Swap</h2>
+
+  <h3>POST /swap/simulate</h3>
+
+  <p>Cotiza swap XLM ↔ USDC vía Soroswap. Body:</p>
+
+  <pre><code>&#123;
+  <span class="s">"fromAsset"</span>: <span class="s">"XLM"</span>,
+  <span class="s">"toAsset"</span>: <span class="s">"USDC"</span>,
+  <span class="s">"amountIn"</span>: <span class="s">"1000000"</span>,
+  <span class="s">"slippageBps"</span>: 50
+&#125;</code></pre>
+
+  <p>Response: <code>&#123; quote: &#123; amountOut, priceImpactPct, platform &#125;, unsignedXdr, signaturePayloadHashBase64, ... &#125;</code>.</p>
+
+  <h3>POST /swap/submit</h3>
+
+  <p>Submit con firma. Body: <code>&#123; "unsignedXdr", "signedAuthEntryXdr" &#125;</code>.</p>
+
+  <h3>POST /swap-sdex/simulate + /submit + /finalize</h3>
+
+  <p>Flow de tres pasos para swap classic SDEX. Requiere G address bootstrappeada. El SDK auto dispara <code>bootstrapG</code> y <code>addTrustlineG</code> si están missing.</p>
+
+  <h2>Recovery</h2>
+
+  <h3>POST /recovery/otp/request</h3>
+
+  <p>Body: <code>&#123; "email": "..." &#125;</code>. Rate limited: 1 por 60s, 3 por hora. Response 200 OK aunque el email no exista (anti enumeración).</p>
+
+  <h3>POST /recovery/otp/verify</h3>
+
+  <p>Body: <code>&#123; "email", "code", "idToken?" &#125;</code>. Response: <code>&#123; "recoveryJwt": "...", "expiresAt": &lt;epoch ms&gt; &#125;</code>. El <code>idToken</code> es opcional y sirve para atar el JWT al Cognito sub actual.</p>
+
+  <h3>GET /fragments/3</h3>
+
+  <p>Header <code>X-Recovery-Jwt: &lt;jwt&gt;</code>. Devuelve <code>&#123; fragmentF3Encrypted, fragmentF2Recovery, recoverySalt &#125;</code>. Requiere JWT válido con scope <code>recovery-finalize</code>.</p>
+
+  <h3>POST /recovery/simulate-rotate-signer</h3>
+
+  <p>Header <code>X-Recovery-Jwt: &lt;jwt&gt;</code>. Body:</p>
+
+  <pre><code>&#123;
+  <span class="s">"newOwnerEd25519Pubkey"</span>: <span class="s">"&lt;hex 64&gt;"</span>,
+  <span class="s">"newSecp256r1Pubkey"</span>: <span class="s">"&lt;hex 130&gt;"</span>,
+  <span class="s">"newEmailCommitment"</span>: <span class="s">"&lt;hex 64&gt;"</span>
+&#125;</code></pre>
+
+  <p>Backend arma la tx <code>rotate_signer</code> y devuelve <code>&#123; unsignedXdr, signaturePayloadHashBase64, placeholderAuthEntryXdr, contextRuleIds &#125;</code>.</p>
+
+  <h3>POST /recovery/finalize</h3>
+
+  <p>Header <code>X-Recovery-Jwt: &lt;jwt&gt;</code>. Body incluye el <code>signedAuthEntryXdr</code> + los nuevos fragments. Backend ejecuta el rotate on chain y persiste los fragments nuevos.</p>
+
+  <h2>KYC y fiat</h2>
+
+  <h3>POST /kyc/register-bank-account</h3>
+
+  <p>Registra CLABE + datos personales para KYC en Dynerox. Body:</p>
+
+  <pre><code>&#123;
+  <span class="s">"clabe"</span>: <span class="s">"012180011201000123"</span>,
+  <span class="s">"firstName"</span>: <span class="s">"Luis"</span>,
+  <span class="s">"paternalLastName"</span>: <span class="s">"Perez"</span>,
+  <span class="s">"maternalLastName"</span>: <span class="s">"Sanchez"</span>,
+  <span class="s">"holderCurp"</span>: <span class="s">"PESL800101HDFRRS01"</span>,
+  <span class="s">"birthDate"</span>: <span class="s">"1980-01-01"</span>,
+  <span class="s">"phone"</span>: <span class="s">"+525512345678"</span>
+&#125;</code></pre>
+
+  <h3>GET /kyc/status</h3>
+
+  <p>Devuelve el status KYC del usuario actual. Response: <code>&#123; "status": "active", "authorizationUrl": "https://auth.dynerox.com/..." &#125;</code>.</p>
+
+  <h3>POST /onramp</h3>
+
+  <p>Crea route Dynerox de MXN a USDC Stellar. Body:</p>
+
+  <pre><code>&#123;
+  <span class="s">"amount"</span>: <span class="s">"500"</span>,
+  <span class="s">"currency"</span>: <span class="s">"MXN"</span>
+&#125;</code></pre>
+
+  <p>Response: <code>&#123; "routeId", "status", "authorizationUrl" &#125;</code>. El user visita el authorizationUrl para completar el pago SPEI.</p>
+
+  <h3>POST /offramp</h3>
+
+  <p>Body: <code>&#123; "amount", "asset": "USDC", "bankAccountId" &#125;</code>. Retira USDC de la wallet a la CLABE registrada.</p>
+
+  <h2>App config</h2>
+
+  <h3>GET /app-config/&#123;appId&#125;</h3>
+
+  <p>Público. Devuelve el appConfig del app. Usado por el SDK al mount del Provider.</p>
+
+  <pre><code>&#123;
+  <span class="s">"appId"</span>: <span class="s">"app_d_..."</span>,
+  <span class="s">"appName"</span>: <span class="s">"Mi App"</span>,
+  <span class="s">"network"</span>: <span class="s">"testnet"</span>,
+  <span class="s">"branding"</span>: &#123; ... &#125;,
+  <span class="s">"auth"</span>: &#123; <span class="s">"providers"</span>: [<span class="s">"email"</span>, <span class="s">"google"</span>] &#125;,
+  <span class="s">"trustlines"</span>: [...],
+  <span class="s">"cognito"</span>: &#123; <span class="s">"userPoolId"</span>, <span class="s">"clientId"</span> &#125;
+&#125;</code></pre>
+
+  <h3>PATCH /apps/&#123;appId&#125;</h3>
+
+  <p>Editar el appConfig. Requiere JWT del developer pool y ownership del app. Usado por el dashboard.</p>
+
+  <h2>Handles y contactos</h2>
+
+  <h3>POST /handles</h3>
+
+  <p>Reserva un handle global tipo <code>@luis.accesly</code>. Body: <code>&#123; "handle": "luis" &#125;</code>. FCFS: primer usuario que lo reserve gana.</p>
+
+  <h3>GET /handles/&#123;handle&#125;</h3>
+
+  <p>Resuelve un handle a la wallet address. Público.</p>
+
+  <h3>GET /contacts</h3>
+
+  <p>Address book del usuario actual. Response array de <code>&#123; contactId, name, walletAddress, handle? &#125;</code>.</p>
+
+  <h3>POST /contacts</h3>
+
+  <p>Agrega contacto. Body: <code>&#123; "name", "walletAddress" o "handle" &#125;</code>.</p>
+
+  <h2>Metadata y observabilidad</h2>
+
+  <ul>
+    <li><code>GET /status</code>: health check público, incluye status de dependencias externas.</li>
+    <li><code>GET /apps/&#123;appId&#125;/users</code>: lista de usuarios del app. Requiere JWT developer pool.</li>
+    <li><code>GET /apps/&#123;appId&#125;/audit-logs</code>: audit trail paginado.</li>
+    <li><code>GET /apps/&#123;appId&#125;/metrics</code>: métricas agregadas.</li>
+    <li><code>GET /apps/&#123;appId&#125;/webhooks</code>: lista de webhooks configurados.</li>
+    <li><code>POST /apps/&#123;appId&#125;/webhooks</code>: registra webhook.</li>
+    <li><code>GET /contracts?network=mainnet</code>: registry de contratos deployados por network.</li>
+  </ul>
+
+  <h2>Idempotencia</h2>
+
+  <p>
+    Operaciones que mueven state aceptan header <code>Idempotency-Key: &lt;uuid&gt;</code>. Si repetís el mismo key en 24h, devolvemos la response cached en vez de re ejecutar. Recomendado para <code>createWallet</code>, <code>recovery/finalize</code> y <code>tx/submit</code>.
+  </p>
+
+  <h2>Rate limits</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr><th>Endpoint group</th><th>Límite</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Recovery OTP request</td><td>1 por 60s, 3 por hora por email</td></tr>
+      <tr><td>Recovery OTP verify</td><td>5 intentos por OTP</td></tr>
+      <tr><td>Auth signIn</td><td>10 por minuto por IP</td></tr>
+      <tr><td>Tx submit</td><td>60 por minuto por user</td></tr>
+      <tr><td>Balance / history reads</td><td>300 por minuto por user</td></tr>
+    </tbody>
+  </table>
+
+  <p>Response 429 cuando se supera el límite. Header <code>Retry-After</code> indica segundos hasta reintentar.</p>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li><a href="/docs/errors">Catálogo de errores</a>.</li>
+    <li><a href="/docs/sdk-reference">SDK Reference</a>: métodos JavaScript que envuelven todos estos endpoints.</li>
+  </ul>
+</DocsLayout>

@@ -1,0 +1,181 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Redes" section="Cómo funciona" pageId="networks">
+  <h1>Redes: testnet y mainnet</h1>
+  <p class="lead">
+    Accesly opera sobre Stellar. Cada app en el dashboard elige la red al momento de crearse. La misma infraestructura backend sirve ambas redes de forma aislada por app.
+  </p>
+
+  <h2>Elección de red por app</h2>
+
+  <p>
+    Cada app que crees en el <a href="/docs/dashboard">dashboard</a> pertenece a exactamente una red: testnet o mainnet. Esta decisión se toma al crear el app y no se puede cambiar después. La razón es simple: los wallets ya deployados quedarían orfans porque no existen cross chain.
+  </p>
+
+  <div class="callout callout-warn">
+    <div class="callout-icon">!</div>
+    <div class="callout-body">
+      <div class="callout-title">Regla dura</div>
+      <p>Un app testnet <strong>no</strong> se convierte en un app mainnet. Para desarrollar y después salir a producción, creás dos apps distintos: uno testnet y uno mainnet. Configurás ambos <code>appId</code> en tus environments correspondientes.</p>
+    </div>
+  </div>
+
+  <h2>Diferencias operacionales</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Aspecto</th>
+        <th>Testnet</th>
+        <th>Mainnet</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Uso</td>
+        <td>Desarrollo, testing, QA</td>
+        <td>Fondos reales, producción</td>
+      </tr>
+      <tr>
+        <td>Fondeo</td>
+        <td>Friendbot gratis (10 mil XLM testnet)</td>
+        <td>On ramp fiat via Dynerox, o transferencia de otro exchange</td>
+      </tr>
+      <tr>
+        <td>KYC obligatorio</td>
+        <td>No</td>
+        <td>Sí para operaciones fiat</td>
+      </tr>
+      <tr>
+        <td>USDC emisor</td>
+        <td>USDC Circle testnet</td>
+        <td><code>GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN</code></td>
+      </tr>
+      <tr>
+        <td>Network passphrase</td>
+        <td>Test SDF Network ; September 2015</td>
+        <td>Public Global Stellar Network ; September 2015</td>
+      </tr>
+      <tr>
+        <td>Soroban RPC</td>
+        <td>soroban testnet stellar org</td>
+        <td>soroban mainnet stellar org</td>
+      </tr>
+      <tr>
+        <td>Explorer</td>
+        <td>stellar.expert / explorer / testnet</td>
+        <td>stellar.expert / explorer / public</td>
+      </tr>
+      <tr>
+        <td>Cap por wallet</td>
+        <td>Sin cap</td>
+        <td>USD 100 durante beta cerrada</td>
+      </tr>
+      <tr>
+        <td>Audit del contract</td>
+        <td>6 audits internos Almanax</td>
+        <td>6 audits internos Almanax</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Configuración del SDK por red</h2>
+
+  <p>
+    El SDK detecta la red automáticamente leyendo el <code>appConfig</code> de tu app. Vos no configurás la red en el <code>AcceslyProvider</code>. Solo el <code>appId</code>:
+  </p>
+
+  <pre><code>&lt;<span class="f">AcceslyProvider</span>
+  <span class="n">appId</span>=&#123;<span class="n">import</span>.<span class="n">meta</span>.<span class="n">env</span>.<span class="n">VITE_ACCESLY_APP_ID</span>&#125;
+  <span class="n">env</span>=<span class="s">"dev"</span>
+  <span class="n">overrides</span>=&#123;&#123; <span class="n">deviceStore</span> &#125;&#125;
+&gt;</code></pre>
+
+  <p>
+    El SDK consulta <code>GET /app-config/&#123;appId&#125;</code>, recibe <code>network: "testnet"</code> o <code>"mainnet"</code>, y usa el RPC + passphrase + USDC issuer correspondiente para todas las operaciones. Los explorer URLs también apuntan al explorer correcto.
+  </p>
+
+  <h2>Badge visual</h2>
+
+  <p>
+    Los componentes del kit muestran un badge sutil cuando la wallet está en mainnet. Es un recordatorio visual para el usuario de que está operando con fondos reales.
+  </p>
+
+  <ul>
+    <li><strong>Testnet</strong>: badge gris con texto "TESTNET" en la esquina superior del <code>&lt;WalletHome /&gt;</code>.</li>
+    <li><strong>Mainnet</strong>: badge lavanda con texto "MAINNET". Además, componentes de firma (<code>&lt;SwapFlow /&gt;</code>, <code>&lt;SendFlow /&gt;</code>) muestran modal de confirmación antes de firmar.</li>
+  </ul>
+
+  <h2>Migración de testnet a mainnet</h2>
+
+  <p>
+    Cuando estés listo para pasar tu integración de desarrollo a producción:
+  </p>
+
+  <ol class="step-list">
+    <li>En el dashboard, creás un app nuevo con network = mainnet. Copiás el branding del app testnet (los toggles están en Settings).</li>
+    <li>Agregás los redirect URIs de tu ambiente de producción al app mainnet (Cognito Google OAuth es estricto con matching).</li>
+    <li>Pedís acceso a KYC prod de Dynerox si vas a usar on ramp (los API keys son distintos entre sandbox y prod).</li>
+    <li>En tu <code>.env</code> de producción, cambiás <code>VITE_ACCESLY_APP_ID</code> al appId mainnet.</li>
+    <li>Deploy a producción. Testeás la primera vez con vos mismo antes de abrir a users.</li>
+  </ol>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div class="callout-body">
+      <div class="callout-title">Los users no se migran</div>
+      <p>Un usuario que creó wallet testnet no tiene wallet mainnet. Son cuentas separadas. En prod arrancás con base de usuarios vacía. Para testers internos, cada uno tiene que hacer signup nuevo en el app mainnet.</p>
+    </div>
+  </div>
+
+  <h2>Fondear una wallet en mainnet</h2>
+
+  <p>
+    A diferencia de testnet donde hay Friendbot gratis, en mainnet el usuario tiene que traer XLM real. Opciones:
+  </p>
+
+  <ul>
+    <li><strong>On ramp fiat via Dynerox</strong>: usuario paga en MXN por SPEI, recibe USDC en su Smart Account. Requiere KYC verificado. Ver <a href="/docs/kyc-fiat">KYC y fiat</a>.</li>
+    <li><strong>Transferencia externa</strong>: el usuario transfiere XLM o USDC desde otro exchange (Kraken, Binance, Coinbase) o wallet a la dirección de su Smart Account.</li>
+    <li><strong>Recibir dentro del ecosistema</strong>: otro usuario Accesly le manda XLM o USDC directo a su address.</li>
+  </ul>
+
+  <p>
+    El primer fondeo tiene un mínimo práctico de 1 XLM (aproximadamente 12 centavos de dólar) para cubrir la reserve base de la cuenta Stellar. Sin esto la cuenta no queda en un estado transactable.
+  </p>
+
+  <h2>Direcciones importantes en mainnet</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Contrato</th>
+        <th>Address</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>USDC issuer (Circle)</td>
+        <td><code>GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN</code></td>
+      </tr>
+      <tr>
+        <td>USDC SAC contract</td>
+        <td><code>CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75</code></td>
+      </tr>
+      <tr>
+        <td>Smart Account v3 WASM hash</td>
+        <td>Consultable en <code>GET /contracts?network=mainnet</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li><a href="/docs/dashboard">Crear un app mainnet</a> en el dashboard.</li>
+    <li><a href="/docs/kyc-fiat">Habilitar on ramp con MXN</a> para tus usuarios.</li>
+    <li><a href="/docs/sdk-reference">Configurar el SDK</a> con appId de producción.</li>
+  </ul>
+</DocsLayout>

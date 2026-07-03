@@ -1,0 +1,119 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Documentación" section="Empezar" pageId="index">
+  <h1>Documentación de <span class="grad-text">Accesly</span></h1>
+  <p class="lead">
+    Todo lo que necesitás para integrar wallets Stellar no custodiales en tu producto. Arquitectura, SDK, API, seguridad y guías paso a paso.
+  </p>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div class="callout-body">
+      <div class="callout-title">¿Primera vez?</div>
+      <p>Arrancá por <a href="/docs/overview">Qué es Accesly</a> si venís sin contexto, o directo a <a href="/docs/quickstart">Quickstart</a> si querés integrar el SDK ya.</p>
+    </div>
+  </div>
+
+  <h2>Rutas rápidas</h2>
+
+  <div class="doc-cards">
+    <a href="/docs/quickstart" class="doc-card">
+      <div class="doc-card-tag">5 minutos</div>
+      <div class="doc-card-title">Quickstart para integradores</div>
+      <p class="doc-card-text">Instalá el SDK, configurá tu appId, monta la wallet en tu app y hacé el primer signup.</p>
+    </a>
+
+    <a href="/docs/architecture" class="doc-card">
+      <div class="doc-card-tag">Concepto</div>
+      <div class="doc-card-title">Arquitectura del wallet</div>
+      <p class="doc-card-text">Cómo se compone la wallet: Shamir 2 de 3, WebAuthn PRF, Smart Account Soroban y separación de responsabilidades.</p>
+    </a>
+
+    <a href="/docs/security" class="doc-card">
+      <div class="doc-card-tag">Seguridad</div>
+      <div class="doc-card-title">Modelo de amenazas</div>
+      <p class="doc-card-text">Qué ataques mitigamos, cuáles quedan en manos del usuario y por qué el backend jamás ve la llave privada.</p>
+    </a>
+
+    <a href="/docs/recovery" class="doc-card">
+      <div class="doc-card-tag">UX</div>
+      <div class="doc-card-title">Recuperación cross device</div>
+      <p class="doc-card-text">Cómo recupera un usuario su wallet en otro dispositivo. OTP por email, passphrase y rotación de signer.</p>
+    </a>
+
+    <a href="/docs/sdk-reference" class="doc-card">
+      <div class="doc-card-tag">Referencia</div>
+      <div class="doc-card-title">SDK Reference</div>
+      <p class="doc-card-text">Provider, hooks y componentes prearmados de <code>@accesly/react</code>. Todo lo que necesitás para renderizar la wallet.</p>
+    </a>
+
+    <a href="/docs/api-reference" class="doc-card">
+      <div class="doc-card-tag">Referencia</div>
+      <div class="doc-card-title">API REST</div>
+      <p class="doc-card-text">Endpoints públicos del backend. Auth Cognito, wallet operations, swap, recovery y KYC.</p>
+    </a>
+
+    <a href="/docs/kyc-fiat" class="doc-card">
+      <div class="doc-card-tag">Fiat</div>
+      <div class="doc-card-title">KYC y rampas MXN</div>
+      <p class="doc-card-text">On ramp y off ramp con Dynerox. CLABE, CURP y flujo de verificación.</p>
+    </a>
+
+    <a href="/docs/dashboard" class="doc-card">
+      <div class="doc-card-tag">Consola</div>
+      <div class="doc-card-title">Dashboard developer</div>
+      <p class="doc-card-text">Crear apps, configurar branding, monitorear usuarios y publicar API keys.</p>
+    </a>
+  </div>
+
+  <h2>Estado del proyecto</h2>
+
+  <p>
+    Accesly corre en Stellar. Los usuarios firman con biométrico (Face ID, Touch ID, Windows Hello) y la wallet vive on chain como un Smart Account Soroban. El backend nunca tiene la llave completa.
+  </p>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Componente</th>
+        <th>Versión</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>@accesly/react</code></td>
+        <td>2.6.0</td>
+        <td>Estable, publicado</td>
+      </tr>
+      <tr>
+        <td><code>@accesly/core</code></td>
+        <td>1.21.0</td>
+        <td>Estable, publicado</td>
+      </tr>
+      <tr>
+        <td>Smart Account contract</td>
+        <td>v3.1.0</td>
+        <td>Deployado en testnet y mainnet</td>
+      </tr>
+      <tr>
+        <td>Backend REST API</td>
+        <td>Estable</td>
+        <td>Testnet y mainnet activos</td>
+      </tr>
+      <tr>
+        <td>Dashboard</td>
+        <td><a href="https://dashboard-accesly.vercel.app/" target="_blank" rel="noopener">dashboard-accesly.vercel.app</a></td>
+        <td>Producción</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Ayuda y soporte</h2>
+
+  <p>
+    Si algo no funciona o encontrás un bug, abrí un issue en <a href="https://github.com/Accesly" target="_blank" rel="noopener">github.com/Accesly</a>. Para consultas comerciales o partnership, escribinos a <code>acceslyoficial@gmail.com</code>.
+  </p>
+</DocsLayout>

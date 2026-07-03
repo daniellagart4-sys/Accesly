@@ -1,0 +1,111 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Changelog" section="Recursos" pageId="changelog">
+  <h1>Changelog</h1>
+  <p class="lead">
+    Historial de releases de Accesly: SDK, backend, dashboard y smart contracts. Entradas recientes primero.
+  </p>
+
+  <h2>@accesly/react 2.6.0</h2>
+
+  <p><em>Multi network support</em></p>
+
+  <ul>
+    <li>El SDK ahora detecta la red (testnet o mainnet) automáticamente del <code>appConfig</code>. No hace falta pasar <code>network</code> como prop.</li>
+    <li>Nuevo hook <code>useNetwork()</code>: azúcar sintáctico que devuelve <code>"testnet"</code> o <code>"mainnet"</code>.</li>
+    <li><code>&lt;WalletHome /&gt;</code> muestra badge visible cuando está en mainnet.</li>
+    <li>Componentes de firma (<code>&lt;SwapFlow /&gt;</code>, <code>&lt;SendFlow /&gt;</code>) muestran modal de confirmación en mainnet.</li>
+    <li>Explorer URLs se ajustan automáticamente al network correcto.</li>
+    <li>Tipos de <code>OrderRequest</code> y <code>RegisterBankAccountRequest</code> alineados con Dynerox (CLABE + CURP).</li>
+    <li>Nuevo hook <code>useKyc()</code> con estados <code>not-started</code>, <code>pending_identity</code>, <code>pending_authorization</code>, <code>active</code>, <code>inactive</code>.</li>
+  </ul>
+
+  <h2>@accesly/react 2.5.4</h2>
+
+  <p><em>authCallbackPath para sub path mounts</em></p>
+
+  <ul>
+    <li>Nuevo prop <code>authCallbackPath</code> en <code>&lt;AcceslyProvider&gt;</code>. Configurás la callback OAuth una sola vez y todos los componentes del kit lo consumen via context.</li>
+    <li>Antes había que pasar <code>redirectUri</code> en <code>signInWithGoogle</code>, <code>AuthCallback</code>, y otros 3-4 sitios. Ahora un solo lugar.</li>
+    <li>Cero breaking change para apps sin sub path.</li>
+  </ul>
+
+  <h2>@accesly/react 2.5.3</h2>
+
+  <p><em>Recovery hardening y WalletAlreadyExistsError</em></p>
+
+  <ul>
+    <li><code>recovery.verifyOtp</code> auto inyecta <code>idToken</code> de sesión Cognito activa. Fix del "lottery bug" con dual Cognito users del mismo email.</li>
+    <li>Nuevo error class <code>WalletAlreadyExistsError</code>. <code>wallet.bootstrap</code> lo tira cuando detecta wallet en backend sin credential local.</li>
+    <li><code>&lt;CreateWalletFlow /&gt;</code> nuevo step "wallet exists" con CTA <code>onRecoverInstead</code>.</li>
+    <li>UI polish: kit components con design system consistente, sin más padding doble.</li>
+  </ul>
+
+  <h2>@accesly/react 2.5.2</h2>
+
+  <p><em>Kit UI rewrite completo</em></p>
+
+  <ul>
+    <li><code>&lt;AuthForm /&gt;</code>, <code>&lt;RecoveryFlow /&gt;</code>, <code>&lt;CreateWalletFlow /&gt;</code>: rewrite completo con design system consistente.</li>
+    <li>Gradient mark icons, Spinner real (sin emoji), Tile / Title / Subtitle / PrimaryButton helpers compartidos.</li>
+    <li>Toda la paleta cae a <code>var(--accesly-X, var(--X, hardcoded))</code>. Auto pickup de design tokens del integrador.</li>
+    <li>RecoveryFlow method picker con cards elevados en vez de list items.</li>
+  </ul>
+
+  <h2>Backend + smart contracts</h2>
+
+  <p><em>Recovery cognitoSub binding + orphan G rotation</em></p>
+
+  <ul>
+    <li><code>recoveryJwt</code> ahora incluye <code>cognitoSub</code> del user actual. Los 3 endpoints downstream (finalize, simulate-rotate-signer, get-fragment-3) hacen <code>GetItem</code> por sub en vez de Query GSI. Cierra el "lottery bug" con dual Cognito users.</li>
+    <li>Recovery finalize ahora invalida la G address vieja automáticamente. La próxima operación que necesite G dispara bootstrap fresh con la seed nueva.</li>
+    <li>Fix: <code>findBiometricTxRuleForSac</code> tira <code>RuleLookupRpcError</code> en vez de silent continue.</li>
+  </ul>
+
+  <h2>Dashboard</h2>
+
+  <p><em>UI redesign completo</em></p>
+
+  <ul>
+    <li>ThemeProvider con toggle light y dark, sincronizado con preferencia del OS.</li>
+    <li>Sidebar 258px sticky con AppSwitcher dropdown que preserva sub path al cambiar de app.</li>
+    <li>Branding section con secondaryColor, gradient preview, reset button y autosave con lastCommitRef.</li>
+    <li>Users tab con StatusChip que distingue active, wallet y no-wallet correctamente.</li>
+    <li>Metrics page con export CSV y JSON.</li>
+    <li>Dev tools tab con snippets copy paste para Vite, Next.js y React Native.</li>
+    <li>AccessLogo component reutilizable (AGlyph, Mark, Wordmark).</li>
+  </ul>
+
+  <h2>Estado del smart account contract</h2>
+
+  <ul>
+    <li>Smart Account v3 deployado en Stellar testnet y mainnet.</li>
+    <li>6 audits internos Almanax completados. Cero findings críticos o high abiertos.</li>
+    <li>Constructor v3 optimizado a 8 args (v2 tenía 13) para caber en protocol 26 footprint limits.</li>
+    <li>139 tests unitarios + integration tests passing.</li>
+    <li>Timelock 48h en upgrades via <code>upgrade-rule</code>.</li>
+  </ul>
+
+  <h2>Convención de versionado</h2>
+
+  <p>Seguimos semver estricto en los paquetes npm:</p>
+
+  <ul>
+    <li><strong>Major</strong>: breaking API change en <code>@accesly/core</code> o <code>@accesly/react</code>.</li>
+    <li><strong>Minor</strong>: features nuevas backward compatible.</li>
+    <li><strong>Patch</strong>: bug fixes.</li>
+  </ul>
+
+  <p>
+    Para el smart contract Soroban usamos versionado semántico independiente. Cada nueva version registrada en la tabla <code>contract-versions</code> del backend con su wasmHash. Upgrades on chain requieren timelock 48h.
+  </p>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li><a href="/docs/quickstart">Quickstart</a> para arrancar con la última version del SDK.</li>
+    <li>Suscribite a releases en <a href="https://github.com/Accesly" target="_blank" rel="noopener">GitHub</a> para notificaciones automáticas.</li>
+  </ul>
+</DocsLayout>

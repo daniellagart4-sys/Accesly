@@ -1,0 +1,388 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="SDK Reference" section="SDK y API" pageId="sdk-reference">
+  <h1>SDK Reference</h1>
+  <p class="lead">
+    Referencia de <code>@accesly/react</code> y <code>@accesly/core</code>. Provider, hooks, componentes del kit y helpers.
+  </p>
+
+  <h2>Paquetes</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Paquete</th>
+        <th>Versión</th>
+        <th>Descripción</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>@accesly/react</code></td>
+        <td>2.6.0</td>
+        <td>Provider, hooks React, componentes prearmados</td>
+      </tr>
+      <tr>
+        <td><code>@accesly/core</code></td>
+        <td>1.21.0</td>
+        <td>Cliente API, tipos, helpers criptográficos, DeviceStore</td>
+      </tr>
+      <tr>
+        <td><code>@accesly/react/kit</code></td>
+        <td>Sub path de react</td>
+        <td>Componentes UI listos para renderizar</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>AcceslyProvider</h2>
+
+  <p>
+    El provider raíz. Envolvés tu app con esto y todos los hooks + componentes del kit funcionan.
+  </p>
+
+  <h3>Props</h3>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Prop</th>
+        <th>Tipo</th>
+        <th>Requerido</th>
+        <th>Descripción</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>appId</code></td>
+        <td>string</td>
+        <td>Sí</td>
+        <td>App ID del dashboard. Determina branding, redes, providers de auth.</td>
+      </tr>
+      <tr>
+        <td><code>env</code></td>
+        <td>"dev" | "staging" | "prod"</td>
+        <td>Sí</td>
+        <td>Environment del backend. Determina qué API URL usar.</td>
+      </tr>
+      <tr>
+        <td><code>authCallbackPath</code></td>
+        <td>string</td>
+        <td>No</td>
+        <td>Path del callback OAuth. Default: <code>/auth/callback</code>. Setear si tu app vive en sub path.</td>
+      </tr>
+      <tr>
+        <td><code>overrides</code></td>
+        <td>object</td>
+        <td>No</td>
+        <td>Override de <code>deviceStore</code>, <code>sessionStorage</code>, <code>authClient</code>. Ver Overrides.</td>
+      </tr>
+      <tr>
+        <td><code>cognitoConfig</code></td>
+        <td>object</td>
+        <td>No</td>
+        <td>Skipea el bootstrap fetch del appConfig. Útil para tests.</td>
+      </tr>
+      <tr>
+        <td><code>loadingFallback</code></td>
+        <td>ReactNode</td>
+        <td>No</td>
+        <td>UI mientras se resuelve el appConfig inicial.</td>
+      </tr>
+      <tr>
+        <td><code>errorFallback</code></td>
+        <td>(err) =&gt; ReactNode</td>
+        <td>No</td>
+        <td>UI si falla el bootstrap del appConfig.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Overrides</h3>
+
+  <p>
+    Para producción siempre pasá <code>deviceStore: new IndexedDbDeviceStore()</code>. Sin esto el default es <code>InMemoryDeviceStore</code> y el usuario pierde acceso al recargar la página.
+  </p>
+
+  <pre><code><span class="k">import</span> &#123; IndexedDbDeviceStore &#125; <span class="k">from</span> <span class="s">'@accesly/core'</span>;
+
+&lt;<span class="f">AcceslyProvider</span>
+  <span class="n">appId</span>=&#123;<span class="n">appId</span>&#125;
+  <span class="n">env</span>=<span class="s">"dev"</span>
+  <span class="n">overrides</span>=&#123;&#123;
+    <span class="n">deviceStore</span>: <span class="k">new</span> <span class="f">IndexedDbDeviceStore</span>(),
+  &#125;&#125;
+&gt;</code></pre>
+
+  <h2>useAccesly</h2>
+
+  <p>El hook principal. Devuelve namespaces con toda la API del SDK.</p>
+
+  <pre><code><span class="k">const</span> &#123;
+  <span class="n">auth</span>,       <span class="c">// signIn, signUp, signInWithGoogle, signOut, handleAuthCallback</span>
+  <span class="n">wallet</span>,     <span class="c">// bootstrap, unlockForSigning, fetchRemote, getStoredCredential</span>
+  <span class="n">tx</span>,         <span class="c">// send, swap, swapViaSdex</span>
+  <span class="n">recovery</span>,   <span class="c">// requestOtp, verifyOtp, finalize, reconstructSeed</span>
+  <span class="n">fiat</span>,       <span class="c">// startOnRamp, startOffRamp, checkStatus</span>
+  <span class="n">contacts</span>,   <span class="c">// list, add, remove, resolve</span>
+  <span class="n">_internal</span>,  <span class="c">// context avanzado</span>
+&#125; = <span class="f">useAccesly</span>();</code></pre>
+
+  <h3>auth</h3>
+
+  <table class="def-table">
+    <thead>
+      <tr><th>Método</th><th>Uso</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>signUp(email, password)</code></td><td>Registra un user con email + password. Cognito manda código de confirmación.</td></tr>
+      <tr><td><code>confirmSignUp(email, code)</code></td><td>Confirma el signup con el código del email.</td></tr>
+      <tr><td><code>signIn(email, password)</code></td><td>Login clásico.</td></tr>
+      <tr><td><code>signInWithGoogle(redirectUri?)</code></td><td>Redirige a Cognito Hosted UI con Google IdP.</td></tr>
+      <tr><td><code>handleAuthCallback(code, redirectUri?)</code></td><td>Intercambia el code del OAuth callback por tokens.</td></tr>
+      <tr><td><code>signOut()</code></td><td>Borra tokens de session storage.</td></tr>
+      <tr><td><code>status</code></td><td>"anonymous" | "authenticated" | "expired" | "bootstrapping"</td></tr>
+      <tr><td><code>username</code></td><td>Email del usuario actual, o null si no autenticado.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>wallet</h3>
+
+  <table class="def-table">
+    <thead>
+      <tr><th>Método</th><th>Uso</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>bootstrap(&#123; email, password, passkey &#125;)</code></td><td>Crea passkey, genera seed, deploya Smart Account on chain.</td></tr>
+      <tr><td><code>unlockForSigning(username)</code></td><td>Pide biométrico al chip, devuelve material listo para firmar.</td></tr>
+      <tr><td><code>fetchRemote()</code></td><td>GET /wallets. Devuelve datos on chain del user actual, o null si no tiene wallet.</td></tr>
+      <tr><td><code>getStoredCredential(username)</code></td><td>Lee del DeviceStore. Devuelve el CredentialRecord local o null.</td></tr>
+      <tr><td><code>bootstrapG(input)</code></td><td>Crea la G address bridge (cuenta Stellar classic). Auto disparado por flows que lo requieren.</td></tr>
+      <tr><td><code>addTrustlineG(input)</code></td><td>Agrega trustline a la G address para un asset específico.</td></tr>
+      <tr><td><code>sweepGToSA(input)</code></td><td>Mueve balance de la G al Smart Account.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>tx</h3>
+
+  <table class="def-table">
+    <thead>
+      <tr><th>Método</th><th>Uso</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>send(&#123; to, amount, asset, ...material &#125;)</code></td><td>Transfer XLM o USDC on chain. <code>material</code> viene de unlockForSigning.</td></tr>
+      <tr><td><code>swap(&#123; fromAsset, toAsset, amountIn, slippageBps, ...material &#125;)</code></td><td>Swap XLM ↔ USDC vía Soroswap.</td></tr>
+      <tr><td><code>swapViaSdex(...)</code></td><td>Fallback SDEX classic. El kit lo dispara auto si Soroswap no tiene path.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>recovery</h3>
+
+  <table class="def-table">
+    <thead>
+      <tr><th>Método</th><th>Uso</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>requestOtp(&#123; email &#125;)</code></td><td>Manda OTP al email. Rate limited: 3/hora.</td></tr>
+      <tr><td><code>verifyOtp(&#123; email, code, idToken? &#125;)</code></td><td>Verifica OTP, devuelve recoveryJwt.</td></tr>
+      <tr><td><code>finalize(&#123; email, password, recoveryJwt, passkey &#125;)</code></td><td>Orquesta el flow completo: reconstruye seed, rota signer, guarda nuevos fragments.</td></tr>
+      <tr><td><code>reconstructSeed(&#123; cognitoPassword, recoveryJwt &#125;)</code></td><td>Bajo nivel. Reconstruye la seed sin rotar. Para casos custom.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>fiat</h3>
+
+  <table class="def-table">
+    <thead>
+      <tr><th>Método</th><th>Uso</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>registerBankAccount(&#123; clabe, ...kycData &#125;)</code></td><td>Registra CLABE + CURP + datos KYC en Dynerox.</td></tr>
+      <tr><td><code>startOnRamp(&#123; amount, currency &#125;)</code></td><td>Crea route MXN → USDC Stellar. Devuelve authorizationUrl.</td></tr>
+      <tr><td><code>startOffRamp(&#123; amount, clabeId &#125;)</code></td><td>Crea route USDC Stellar → MXN. Devuelve authorizationUrl.</td></tr>
+      <tr><td><code>checkStatus(routeId)</code></td><td>Consulta status de una route específica.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Hooks</h2>
+
+  <h3>useAppConfig</h3>
+
+  <p>Lee la config del app (branding, providers, network). Cached module level: un solo poll a backend por appId sin importar cuántos componentes lo consuman.</p>
+
+  <pre><code><span class="k">const</span> &#123; <span class="n">appConfig</span>, <span class="n">status</span>, <span class="n">error</span> &#125; = <span class="f">useAppConfig</span>();
+
+<span class="c">// appConfig.network: "testnet" | "mainnet"</span>
+<span class="c">// appConfig.branding: colores, logos, textos</span>
+<span class="c">// appConfig.auth.providers: ["email", "google"]</span></code></pre>
+
+  <h3>useBranding</h3>
+
+  <p>Escribe CSS vars al <code>:root</code> con los colores del app. Devuelve textos brandeados (loginButtonText, landingTitle, etc.).</p>
+
+  <pre><code><span class="k">const</span> <span class="n">branding</span> = <span class="f">useBranding</span>();
+
+<span class="c">// document.documentElement tiene ahora:</span>
+<span class="c">//   --accesly-primary: #a78bfa</span>
+<span class="c">//   --accesly-grad: linear-gradient(...)</span>
+<span class="c">// Y branding.loginButtonText = "Ingresar" o el custom del dev</span></code></pre>
+
+  <h3>useBalance</h3>
+
+  <p>Devuelve balance XLM + USDC de la wallet actual. Poll + SSE, cached module level.</p>
+
+  <pre><code><span class="k">const</span> &#123; <span class="n">xlm</span>, <span class="n">usdc</span>, <span class="n">loading</span>, <span class="n">refetch</span> &#125; = <span class="f">useBalance</span>();</code></pre>
+
+  <h3>useWalletHistory</h3>
+
+  <p>Historia paginada de transacciones. Poll cada 30s + optimistic updates.</p>
+
+  <pre><code><span class="k">const</span> &#123; <span class="n">history</span>, <span class="n">nextPage</span>, <span class="n">loading</span> &#125; = <span class="f">useWalletHistory</span>(&#123; <span class="n">limit</span>: 20 &#125;);</code></pre>
+
+  <h3>useAuthProviders</h3>
+
+  <p>Devuelve qué providers de auth están habilitados en el appConfig. Los componentes del kit usan esto para renderizar botones condicionales.</p>
+
+  <pre><code><span class="k">const</span> &#123; <span class="n">providers</span> &#125; = <span class="f">useAuthProviders</span>();
+<span class="c">// providers: ["email", "google"]</span>
+
+<span class="k">if</span> (<span class="n">providers</span>.<span class="f">includes</span>(<span class="s">'google'</span>)) &#123;
+  <span class="c">// renderizar botón Google</span>
+&#125;</code></pre>
+
+  <h3>useKyc</h3>
+
+  <p>Status de KYC del usuario en Dynerox.</p>
+
+  <pre><code><span class="k">const</span> &#123; <span class="n">status</span>, <span class="n">authorizationUrl</span>, <span class="n">refetch</span> &#125; = <span class="f">useKyc</span>();
+
+<span class="c">// status: "not-started" | "pending_identity" | "pending_authorization" | "active" | "inactive"</span>
+<span class="c">// authorizationUrl: link a auth.dynerox.com para completar el KYC</span></code></pre>
+
+  <h3>Otros hooks</h3>
+
+  <ul>
+    <li><code>useWalletStatus</code>: onChain state del Smart Account.</li>
+    <li><code>useWalletActivity</code>: eventos en tiempo real (SSE).</li>
+    <li><code>useContacts</code>: address book del user.</li>
+    <li><code>useHandle</code>: username global reservado (ejemplo <code>@luis.accesly</code>).</li>
+    <li><code>useStatus</code>: health check del backend.</li>
+    <li><code>useUpgradeRecommendation</code>: si hay upgrade disponible del contract.</li>
+  </ul>
+
+  <h2>Componentes del kit</h2>
+
+  <p>
+    Import: <code>import &#123; ComponentName &#125; from '@accesly/react/kit';</code>
+  </p>
+
+  <h3>Auth</h3>
+
+  <ul>
+    <li><code>&lt;AuthForm mode="sign-in|sign-up" onSuccess onError /&gt;</code>: email + password + Google en un solo componente.</li>
+    <li><code>&lt;AuthCallback onSuccess onError redirectUri? /&gt;</code>: handler de OAuth callback.</li>
+    <li><code>&lt;GoogleSignInButton onError /&gt;</code>: botón standalone.</li>
+    <li><code>&lt;AuthGuard&gt;children&lt;/AuthGuard&gt;</code>: HOC que redirige si no hay sesión.</li>
+  </ul>
+
+  <h3>Wallet</h3>
+
+  <ul>
+    <li><code>&lt;CreateWalletFlow onDone onError onRecoverInstead /&gt;</code>: bootstrap flow con passphrase input y detection de wallet existente.</li>
+    <li><code>&lt;WalletHome /&gt;</code>: dashboard con balance + botones + activity list.</li>
+    <li><code>&lt;BalanceCard /&gt;</code>: solo el balance card, standalone.</li>
+    <li><code>&lt;MovementsList source="history|activity" pageSize /&gt;</code>: lista de movimientos.</li>
+    <li><code>&lt;WalletStatusBadge /&gt;</code>: chip on chain / pending deploy / offline.</li>
+    <li><code>&lt;WalletLauncher&gt;children&lt;/WalletLauncher&gt;</code>: modal launcher para wallet embebida.</li>
+  </ul>
+
+  <h3>Transacciones</h3>
+
+  <ul>
+    <li><code>&lt;SendFlow onSuccess onCancel defaultAsset? /&gt;</code>: send con contact picker y validación.</li>
+    <li><code>&lt;SwapFlow onSuccess onCancel defaultFrom defaultTo /&gt;</code>: swap XLM ↔ USDC con quote y slippage.</li>
+    <li><code>&lt;ReceiveFlow /&gt;</code>: address + QR + copy.</li>
+    <li><code>&lt;ContactPicker onSelect /&gt;</code>: selector de contacto.</li>
+    <li><code>&lt;HandleShareCard /&gt;</code>: card para compartir tu handle global.</li>
+  </ul>
+
+  <h3>Recovery y KYC</h3>
+
+  <ul>
+    <li><code>&lt;RecoveryFlow onDone onCancel passkeyRpName? /&gt;</code>: recovery completo con selector de método.</li>
+    <li><code>&lt;AddFundsFlow onDone /&gt;</code>: on ramp Dynerox con KYC preflight.</li>
+  </ul>
+
+  <h2>Overrides + custom UI</h2>
+
+  <p>
+    Todos los componentes leen tu branding automáticamente. Si querés customizar más:
+  </p>
+
+  <ul>
+    <li>Override CSS vars (<code>--accesly-primary</code>, <code>--accesly-grad</code>, <code>--accesly-card</code>, etc.) en tu propio CSS.</li>
+    <li>Pasar prop <code>className</code> a la mayoría de componentes para reemplazar el wrapper.</li>
+    <li>Los componentes son <code>function</code> exports, podés forkarlos si necesitás customización de fondo. El source está en el package de <code>node_modules/@accesly/react/dist</code>.</li>
+  </ul>
+
+  <h2 id="astro">Integración con Astro</h2>
+
+  <p>
+    El SDK depende de APIs browser (IndexedDB, WebAuthn). Si tu Astro app usa <code>output: 'server'</code>, montá los componentes como <code>client:only="react"</code>:
+  </p>
+
+  <pre><code>---
+<span class="k">import</span> &#123; DemoEntry &#125; <span class="k">from</span> <span class="s">'../components/demo/DemoEntry'</span>;
+---
+
+&lt;<span class="f">DemoEntry</span> <span class="n">client:only</span>=<span class="s">"react"</span> /&gt;</code></pre>
+
+  <p>
+    Y en <code>astro.config.mjs</code> agregá node polyfills scopeados solo al client build:
+  </p>
+
+  <pre><code><span class="k">import</span> &#123; nodePolyfills &#125; <span class="k">from</span> <span class="s">'vite-plugin-node-polyfills'</span>;
+
+<span class="k">const</span> <span class="n">polyfills</span> = <span class="f">nodePolyfills</span>(&#123;
+  <span class="n">include</span>: [<span class="s">'buffer'</span>, <span class="s">'crypto'</span>, <span class="s">'stream'</span>, <span class="s">'util'</span>, <span class="s">'process'</span>],
+  <span class="n">globals</span>: &#123; <span class="n">Buffer</span>: <span class="k">true</span>, <span class="n">global</span>: <span class="k">true</span>, <span class="n">process</span>: <span class="k">true</span> &#125;,
+&#125;);
+
+<span class="k">const</span> <span class="n">clientOnly</span> = (<span class="n">Array</span>.<span class="f">isArray</span>(<span class="n">polyfills</span>) ? <span class="n">polyfills</span> : [<span class="n">polyfills</span>]).<span class="f">map</span>((<span class="n">p</span>) =&gt; (&#123;
+  ...<span class="n">p</span>,
+  <span class="n">apply</span>: (<span class="n">_c</span>, <span class="n">env</span>) =&gt; !<span class="n">env</span>.<span class="n">isSsrBuild</span>,
+&#125;));
+
+<span class="k">export default</span> &#123;
+  <span class="n">vite</span>: &#123;
+    <span class="n">plugins</span>: <span class="n">clientOnly</span>,
+    <span class="n">ssr</span>: &#123;
+      <span class="n">external</span>: [<span class="s">'@accesly/react'</span>, <span class="s">'@accesly/core'</span>, <span class="s">'@stellar/stellar-sdk'</span>],
+    &#125;,
+  &#125;,
+&#125;;</code></pre>
+
+  <h2>Errores</h2>
+
+  <p>El SDK exporta clases de error específicas para try/catch preciso:</p>
+
+  <ul>
+    <li><code>WalletNotEnrolledError</code>: rule missing para un asset.</li>
+    <li><code>GAddressNotBootstrappedError</code>: la G bridge no existe todavía.</li>
+    <li><code>GMissingTrustlineError</code>: falta trustline en la G.</li>
+    <li><code>WalletAlreadyExistsError</code>: intentaste bootstrap y ya hay wallet en backend.</li>
+    <li><code>AuthError</code>, <code>ValidationError</code>, <code>RateLimitError</code>, etc.</li>
+  </ul>
+
+  <p>Catálogo completo con códigos HTTP y remediation en <a href="/docs/errors">Errores</a>.</p>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li><a href="/docs/api-reference">API Reference</a>: endpoints REST directos.</li>
+    <li><a href="/docs/quickstart">Quickstart</a>: integrar el SDK en 5 minutos.</li>
+    <li><a href="/docs/dashboard">Dashboard</a>: crear tu app y obtener el appId.</li>
+  </ul>
+</DocsLayout>

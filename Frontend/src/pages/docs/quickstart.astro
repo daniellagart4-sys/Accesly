@@ -1,0 +1,188 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Quickstart" section="Empezar" pageId="quickstart">
+  <h1>Quickstart</h1>
+  <p class="lead">
+    De cero a wallet Stellar funcionando en tu app React. 5 minutos si tenés Node 20 y pnpm instalados.
+  </p>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div class="callout-body">
+      <div class="callout-title">Antes de empezar</div>
+      <p>Necesitás una cuenta en <a href="https://dashboard-accesly.vercel.app/" target="_blank" rel="noopener">el dashboard</a> y un app creada. Si no tenés uno, seguí <a href="/docs/dashboard">esta guía</a> primero.</p>
+    </div>
+  </div>
+
+  <h2>1. Instalá el SDK</h2>
+
+  <p>Dentro de tu proyecto React (Vite, Next.js, Astro con React island), agregá los paquetes:</p>
+
+  <pre><code><span class="c"># pnpm</span>
+pnpm add @accesly/react @accesly/core react-router-dom
+
+<span class="c"># npm</span>
+npm install @accesly/react @accesly/core react-router-dom
+
+<span class="c"># yarn</span>
+yarn add @accesly/react @accesly/core react-router-dom</code></pre>
+
+  <p>
+    Si usás <code>@stellar/stellar-sdk</code> del lado del cliente (para tx building custom), agregalo también. Requiere polyfills de Node en el bundle client. Ver la sección <a href="#polyfills">Polyfills</a> más abajo.
+  </p>
+
+  <h2>2. Configurá variables de entorno</h2>
+
+  <p>Agregá el appId de tu dashboard al <code>.env</code>:</p>
+
+  <pre><code><span class="c"># Vite</span>
+VITE_ACCESLY_APP_ID=app_d_tu_app_id_real
+
+<span class="c"># Next.js</span>
+NEXT_PUBLIC_ACCESLY_APP_ID=app_d_tu_app_id_real
+
+<span class="c"># Astro</span>
+PUBLIC_ACCESLY_APP_ID=app_d_tu_app_id_real</code></pre>
+
+  <h2>3. Montá el Provider en la raíz</h2>
+
+  <p>Envolvé tu app con <code>AcceslyProvider</code>. El SDK se encarga de auth, sesión y estado de la wallet.</p>
+
+  <pre><code><span class="k">import</span> &#123; StrictMode, useMemo &#125; <span class="k">from</span> <span class="s">'react'</span>;
+<span class="k">import</span> &#123; BrowserRouter &#125; <span class="k">from</span> <span class="s">'react-router-dom'</span>;
+<span class="k">import</span> &#123; AcceslyProvider &#125; <span class="k">from</span> <span class="s">'@accesly/react'</span>;
+<span class="k">import</span> &#123; IndexedDbDeviceStore &#125; <span class="k">from</span> <span class="s">'@accesly/core'</span>;
+<span class="k">import</span> &#123; App &#125; <span class="k">from</span> <span class="s">'./App'</span>;
+
+<span class="k">const</span> <span class="n">appId</span> = <span class="n">import</span>.<span class="n">meta</span>.<span class="n">env</span>.<span class="n">VITE_ACCESLY_APP_ID</span>;
+
+<span class="k">export function</span> <span class="f">Root</span>() &#123;
+  <span class="k">const</span> <span class="n">deviceStore</span> = <span class="f">useMemo</span>(() =&gt; <span class="k">new</span> <span class="f">IndexedDbDeviceStore</span>(), []);
+  <span class="k">return</span> (
+    &lt;<span class="f">StrictMode</span>&gt;
+      &lt;<span class="f">AcceslyProvider</span>
+        <span class="n">appId</span>=&#123;<span class="n">appId</span>&#125;
+        <span class="n">env</span>=<span class="s">"dev"</span>
+        <span class="n">overrides</span>=&#123;&#123; <span class="n">deviceStore</span> &#125;&#125;
+      &gt;
+        &lt;<span class="f">BrowserRouter</span>&gt;
+          &lt;<span class="f">App</span> /&gt;
+        &lt;/<span class="f">BrowserRouter</span>&gt;
+      &lt;/<span class="f">AcceslyProvider</span>&gt;
+    &lt;/<span class="f">StrictMode</span>&gt;
+  );
+&#125;</code></pre>
+
+  <div class="callout callout-warn">
+    <div class="callout-icon">!</div>
+    <div class="callout-body">
+      <div class="callout-title">Sobre IndexedDbDeviceStore</div>
+      <p><code>IndexedDbDeviceStore</code> guarda el <code>CredentialRecord</code> (fragmento F1 cifrado, ids de passkey, salts) en IndexedDB del navegador. Sin esto el SDK cae a <code>InMemoryDeviceStore</code> y el usuario pierde acceso al recargar la página.</p>
+    </div>
+  </div>
+
+  <h2>4. Renderizá un flow del kit</h2>
+
+  <p>El SDK trae componentes prearmados en <code>@accesly/react/kit</code>. Ejemplo mínimo con signup y wallet home:</p>
+
+  <pre><code><span class="k">import</span> &#123; useAccesly &#125; <span class="k">from</span> <span class="s">'@accesly/react'</span>;
+<span class="k">import</span> &#123; AuthForm, CreateWalletFlow, WalletHome &#125; <span class="k">from</span> <span class="s">'@accesly/react/kit'</span>;
+
+<span class="k">export function</span> <span class="f">App</span>() &#123;
+  <span class="k">const</span> &#123; <span class="n">auth</span>, <span class="n">wallet</span> &#125; = <span class="f">useAccesly</span>();
+
+  <span class="k">if</span> (<span class="n">auth</span>.<span class="n">status</span> !== <span class="s">'authenticated'</span>) &#123;
+    <span class="k">return</span> &lt;<span class="f">AuthForm</span> <span class="n">mode</span>=<span class="s">"sign-up"</span> /&gt;;
+  &#125;
+
+  <span class="k">const</span> [<span class="n">hasWallet</span>, <span class="n">setHasWallet</span>] = <span class="f">useState</span>(<span class="n">null</span>);
+  <span class="f">useEffect</span>(() =&gt; &#123;
+    <span class="n">wallet</span>.<span class="f">fetchRemote</span>().<span class="f">then</span>(<span class="n">r</span> =&gt; <span class="f">setHasWallet</span>(<span class="n">Boolean</span>(<span class="n">r</span>)));
+  &#125;, [<span class="n">wallet</span>]);
+
+  <span class="k">if</span> (<span class="n">hasWallet</span> === <span class="n">null</span>) <span class="k">return</span> &lt;<span class="f">div</span>&gt;<span class="s">Cargando...</span>&lt;/<span class="f">div</span>&gt;;
+  <span class="k">if</span> (!<span class="n">hasWallet</span>) <span class="k">return</span> &lt;<span class="f">CreateWalletFlow</span> /&gt;;
+
+  <span class="k">return</span> &lt;<span class="f">WalletHome</span> /&gt;;
+&#125;</code></pre>
+
+  <p>
+    Con eso ya tenés: signup con email o Google, creación de wallet on chain, y home con balance y actividad. Todos los componentes leen tu branding del dashboard automáticamente.
+  </p>
+
+  <h2>5. Callback URL de OAuth</h2>
+
+  <p>
+    Si vas a usar login con Google, tenés que registrar la URL de callback en el dashboard. Anda a Settings del app, sección <em>Redirect URIs</em>, y agregá la URL exacta donde monta tu app.
+  </p>
+
+  <ul>
+    <li>Desarrollo local: <code>http://localhost:5173/auth/callback</code></li>
+    <li>Producción: <code>https://tu-app.com/auth/callback</code></li>
+  </ul>
+
+  <p>
+    Si tu app vive bajo un sub path (por ejemplo <code>/wallet</code> o <code>/demo</code>), configurá <code>authCallbackPath</code> en el provider:
+  </p>
+
+  <pre><code>&lt;<span class="f">AcceslyProvider</span>
+  <span class="n">appId</span>=&#123;<span class="n">appId</span>&#125;
+  <span class="n">env</span>=<span class="s">"dev"</span>
+  <span class="n">authCallbackPath</span>=<span class="s">"/demo/auth/callback"</span>
+  <span class="n">overrides</span>=&#123;&#123; <span class="n">deviceStore</span> &#125;&#125;
+&gt;</code></pre>
+
+  <h2>6. Renderizá el callback handler</h2>
+
+  <p>Creá una ruta que reciba el code de OAuth. El kit tiene un componente listo:</p>
+
+  <pre><code><span class="k">import</span> &#123; AuthCallback &#125; <span class="k">from</span> <span class="s">'@accesly/react/kit'</span>;
+<span class="k">import</span> &#123; useNavigate &#125; <span class="k">from</span> <span class="s">'react-router-dom'</span>;
+
+<span class="k">export function</span> <span class="f">AuthCallbackPage</span>() &#123;
+  <span class="k">const</span> <span class="n">navigate</span> = <span class="f">useNavigate</span>();
+  <span class="k">return</span> (
+    &lt;<span class="f">AuthCallback</span>
+      <span class="n">onSuccess</span>=&#123;() =&gt; <span class="f">navigate</span>(<span class="s">'/wallet'</span>)&#125;
+      <span class="n">onError</span>=&#123;() =&gt; <span class="f">navigate</span>(<span class="s">'/'</span>)&#125;
+    /&gt;
+  );
+&#125;</code></pre>
+
+  <h2 id="polyfills">Polyfills para el cliente</h2>
+
+  <p>
+    <code>@stellar/stellar-sdk</code> importa Buffer y crypto de Node. En el bundle del cliente esos builtins no existen. Si tu bundler es Vite o Astro, agregá <code>vite-plugin-node-polyfills</code>:
+  </p>
+
+  <pre><code><span class="c">// vite.config.ts o astro.config.mjs</span>
+<span class="k">import</span> &#123; nodePolyfills &#125; <span class="k">from</span> <span class="s">'vite-plugin-node-polyfills'</span>;
+
+<span class="k">export default</span> &#123;
+  <span class="n">plugins</span>: [
+    <span class="f">nodePolyfills</span>(&#123;
+      <span class="n">include</span>: [<span class="s">'buffer'</span>, <span class="s">'crypto'</span>, <span class="s">'stream'</span>, <span class="s">'util'</span>, <span class="s">'process'</span>],
+      <span class="n">globals</span>: &#123; <span class="n">Buffer</span>: <span class="k">true</span>, <span class="n">global</span>: <span class="k">true</span>, <span class="n">process</span>: <span class="k">true</span> &#125;,
+    &#125;),
+  ],
+&#125;;</code></pre>
+
+  <div class="callout callout-warn">
+    <div class="callout-icon">!</div>
+    <div class="callout-body">
+      <div class="callout-title">Astro y SSR</div>
+      <p>Si tu app es Astro con <code>output: 'server'</code>, evitá que los polyfills se apliquen al bundle SSR. Ver <a href="/docs/sdk-reference#astro">SDK Reference · Astro</a> para el patrón completo.</p>
+    </div>
+  </div>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li>Aprendé cómo funciona la wallet por dentro en <a href="/docs/architecture">Arquitectura</a>.</li>
+    <li>Configurá branding, providers y colores en <a href="/docs/dashboard">el dashboard</a>.</li>
+    <li>Habilitá on ramp con MXN via <a href="/docs/kyc-fiat">KYC y fiat</a>.</li>
+    <li>Revisá el catálogo de <a href="/docs/errors">errores</a> para tu error boundary.</li>
+  </ul>
+</DocsLayout>

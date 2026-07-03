@@ -1,0 +1,195 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Recuperación" section="Cómo funciona" pageId="recovery">
+  <h1>Recuperación cross device</h1>
+  <p class="lead">
+    Cómo un usuario recupera su wallet en un dispositivo nuevo. El modelo Shamir 2 de 3 permite hacer esto sin comprometer la premisa no custodial.
+  </p>
+
+  <h2>Cuándo se necesita recovery</h2>
+
+  <p>
+    El flujo de recuperación se dispara en tres situaciones típicas:
+  </p>
+
+  <ul>
+    <li><strong>Cambio de dispositivo</strong>: el usuario compra un teléfono nuevo o formatea la laptop. El passkey viejo ya no está.</li>
+    <li><strong>Cambio de navegador</strong>: usuario que operaba en Chrome ahora quiere usar Safari en el mismo dispositivo. Los passkeys de un browser no cruzan a otro (a menos que usen iCloud Keychain o Google Password Manager que sincroniza).</li>
+    <li><strong>Borrado accidental de IndexedDB</strong>: el usuario limpió el cache del navegador y perdió el <code>CredentialRecord</code> local.</li>
+  </ul>
+
+  <p>
+    En los tres casos la wallet on chain sigue existiendo intacta. Los fondos están seguros. El problema es que el dispositivo actual no tiene F1 ni el passkey necesarios para firmar.
+  </p>
+
+  <h2>Los tres fragmentos, revisitados</h2>
+
+  <p>
+    La wallet fue creada partiendo la seed con Shamir 2 de 3. Necesitás 2 fragmentos cualesquiera de estos tres:
+  </p>
+
+  <ul>
+    <li><strong>F1</strong>: guardado local en IndexedDB del navegador del user. Cifrado con llave derivada del biométrico del passkey del device.</li>
+    <li><strong>F2</strong>: guardado en el backend Accesly. Cifrado con llave derivada del biométrico. Requiere JWT válido para descargar.</li>
+    <li><strong>F3</strong>: guardado en el backend Accesly. Cifrado con llave derivada de una <strong>passphrase</strong> que el usuario eligió al crear la wallet (PBKDF2 600 mil iteraciones).</li>
+  </ul>
+
+  <p>
+    En operación normal se usan F1 + F2. En recuperación se usan F2 + F3, porque F1 no está disponible en el device nuevo. La passphrase del usuario descifra F3.
+  </p>
+
+  <h2>Dos caminos de recuperación</h2>
+
+  <p>
+    El flow de recovery del kit (<code>&lt;RecoveryFlow /&gt;</code>) ofrece dos caminos según cómo se registró el usuario originalmente.
+  </p>
+
+  <h3>Camino 1: recovery por email</h3>
+
+  <p>Para users que se registraron con email y password.</p>
+
+  <ol class="step-list">
+    <li>Usuario ingresa su email en el flow.</li>
+    <li>Backend envía un OTP de 6 dígitos al email via Amazon SES.</li>
+    <li>Usuario ingresa el OTP y su passphrase de recovery en el flow.</li>
+    <li>Backend verifica el OTP contra el hash bcrypt, emite un <code>recoveryJwt</code> con TTL 5 minutos.</li>
+    <li>SDK descarga F2 y F3 (envueltos en session key efímera).</li>
+    <li>SDK deriva la <code>recoveryKey</code> con PBKDF2(passphrase, salt, 600k), descifra F3.</li>
+    <li>SDK reconstruye la seed usando Shamir(F2, F3).</li>
+    <li>SDK genera un passkey <strong>nuevo</strong> en el device actual con la extensión PRF.</li>
+    <li>SDK genera una seed nueva, la parte con Shamir, cifra los nuevos F1, F2, F3.</li>
+    <li>SDK firma una transacción <code>rotate_signer</code> con la seed vieja, la manda al backend, se ejecuta on chain.</li>
+    <li>Backend actualiza F2 y F3 en DynamoDB con los nuevos fragmentos. SDK guarda F1 nuevo en IndexedDB local.</li>
+  </ol>
+
+  <h3>Camino 2: recovery via Google</h3>
+
+  <p>Para users que se registraron con Google.</p>
+
+  <ol class="step-list">
+    <li>Usuario clickea "Continuar con Google" en el flow.</li>
+    <li>Sesión Cognito federada se establece.</li>
+    <li>Backend envía OTP al email del Google account.</li>
+    <li>Usuario ingresa OTP y passphrase de recovery.</li>
+    <li>El resto es idéntico al Camino 1 desde el paso 4.</li>
+  </ol>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div class="callout-body">
+      <div class="callout-title">Por qué email OTP en ambos casos</div>
+      <p>Incluso en el flow Google, mandamos OTP al email como segundo factor. Esto protege contra el escenario donde alguien obtiene control del Google account del user (via compromiso de sesión OAuth) pero no del email inbox.</p>
+    </div>
+  </div>
+
+  <h2>Qué pasa on chain</h2>
+
+  <p>
+    El paso crítico del recovery es la <strong>rotación del signer on chain</strong>. El Smart Account v3 tiene una función <code>rotate_signer</code> que reemplaza el owner ed25519 pubkey y el passkey secp256r1 pubkey.
+  </p>
+
+  <p>La firma de esta transacción se hace con la seed vieja (recién reconstruida por Shamir F2 + F3). Después de la rotación:</p>
+
+  <ul>
+    <li>La seed vieja ya no autoriza operaciones en el Smart Account.</li>
+    <li>El passkey viejo (del device perdido) ya no vale.</li>
+    <li>El nuevo owner y el nuevo passkey son los únicos que firman ops futuras.</li>
+  </ul>
+
+  <p>
+    Como side effect, la <strong>G address bridge</strong> (dirección Stellar classic asociada) también se invalida porque su master key es la seed vieja. El SDK detecta esto y hace bootstrap de una G address nueva la próxima vez que se necesite (típicamente al hacer un swap SDEX).
+  </p>
+
+  <h2>El rol de la passphrase</h2>
+
+  <p>
+    La passphrase de recovery es <strong>la única cosa que el usuario tiene que recordar</strong>. Es el gate de seguridad del F3.
+  </p>
+
+  <p>
+    Sin la passphrase, la recuperación es imposible. Ni Accesly, ni AWS, ni el integrador tiene forma de derivar la <code>recoveryKey</code> sin conocer la passphrase. Es literalmente PBKDF2 con 600 mil rondas de un secreto que solo el user sabe.
+  </p>
+
+  <div class="callout callout-danger">
+    <div class="callout-icon">!</div>
+    <div class="callout-body">
+      <div class="callout-title">Comunicá esto claramente al usuario</div>
+      <p>Al momento de creación de wallet, el usuario elige una passphrase. Si la olvida, y además pierde el device, los fondos son inaccesibles. No hay backdoor. Es la contra parte del modelo no custodial. Tu UI tiene que dejarlo brutalmente claro.</p>
+    </div>
+  </div>
+
+  <h2>Anti abuse en recovery</h2>
+
+  <p>
+    El endpoint <code>POST /recovery/otp/request</code> tiene rate limiting:
+  </p>
+
+  <ul>
+    <li>Máximo 1 OTP cada 60 segundos por email hash.</li>
+    <li>Máximo 3 OTPs por hora por email hash.</li>
+    <li>Anti enumeración: la respuesta es 200 OK incluso si el email no existe en la base. El atacante no puede usar este endpoint para descubrir cuentas.</li>
+  </ul>
+
+  <p>
+    Y en <code>POST /recovery/otp/verify</code>:
+  </p>
+
+  <ul>
+    <li>Máximo 5 intentos por OTP. Después el row se invalida hasta que TTL lo borre.</li>
+    <li>OTP TTL: 10 minutos. Después expira.</li>
+    <li>OTP es one shot: al primer verify exitoso el row se elimina.</li>
+  </ul>
+
+  <h2>Diseño del RecoveryFlow del kit</h2>
+
+  <p>
+    El componente <code>&lt;RecoveryFlow /&gt;</code> del kit maneja los dos caminos con un state machine interno:
+  </p>
+
+  <pre><code><span class="k">import</span> &#123; RecoveryFlow &#125; <span class="k">from</span> <span class="s">'@accesly/react/kit'</span>;
+<span class="k">import</span> &#123; useNavigate &#125; <span class="k">from</span> <span class="s">'react-router-dom'</span>;
+
+<span class="k">export function</span> <span class="f">RecoverPage</span>() &#123;
+  <span class="k">const</span> <span class="n">navigate</span> = <span class="f">useNavigate</span>();
+  <span class="k">return</span> (
+    &lt;<span class="f">RecoveryFlow</span>
+      <span class="n">onDone</span>=&#123;() =&gt; <span class="f">navigate</span>(<span class="s">'/wallet'</span>)&#125;
+      <span class="n">onCancel</span>=&#123;() =&gt; <span class="f">navigate</span>(<span class="s">'/'</span>)&#125;
+    /&gt;
+  );
+&#125;</code></pre>
+
+  <p>
+    El componente renderiza 4 pantallas: selector de método (email vs Google), input de email, input de OTP + passphrase, y confirmación. Toda la lógica de descargar fragments, reconstruir seed, rotar signer y firmar la nueva config está encapsulada en el hook <code>recovery.finalize</code>.
+  </p>
+
+  <h2>Casos especiales</h2>
+
+  <h3>Wallet huérfana detectada al signup</h3>
+
+  <p>
+    Si un usuario intenta hacer signup con un email que ya tiene wallet on chain (típicamente porque su device tenía credential pero se lo borraron, y ahora está en device nuevo), el SDK detecta la situación y devuelve <code>WalletAlreadyExistsError</code>. El kit <code>&lt;CreateWalletFlow /&gt;</code> muestra pantalla "Ya tenés una wallet" con CTA a <code>&lt;RecoveryFlow /&gt;</code>.
+  </p>
+
+  <h3>Recovery múltiple</h3>
+
+  <p>
+    Un usuario puede hacer recovery cuantas veces necesite. Cada recovery rota el signer on chain. Cada rotación tiene un fee on chain que Accesly cubre con el relayer fund.
+  </p>
+
+  <h3>Cognito dual users con mismo email</h3>
+
+  <p>
+    Escenario edge case: un usuario se registró primero con email y password, después olvidó y se registró con Google (mismo email). Cognito los trata como users distintos con <code>sub</code> distintos. El flow de recovery incluye el <code>cognitoSub</code> en el <code>recoveryJwt</code> para asegurar que la rotación afecta exactamente al usuario Cognito autenticado, no a un dual user del mismo email.
+  </p>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li><a href="/docs/security">Modelo de amenazas</a>: cómo se protege el flow de recovery contra ataques.</li>
+    <li><a href="/docs/sdk-reference">SDK Reference</a>: props y callbacks del <code>&lt;RecoveryFlow /&gt;</code>.</li>
+    <li><a href="/docs/api-reference">API Reference</a>: endpoints <code>/recovery/otp/*</code> y <code>/recovery/finalize</code>.</li>
+  </ul>
+</DocsLayout>

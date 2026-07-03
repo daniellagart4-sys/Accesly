@@ -1,0 +1,248 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="KYC y fiat" section="Integraciones" pageId="kyc-fiat">
+  <h1>KYC y rampas fiat con Dynerox</h1>
+  <p class="lead">
+    On ramp y off ramp entre MXN y USDC sobre Stellar. Accesly integra <a href="https://dynerox.com" target="_blank" rel="noopener">Dynerox</a> como proveedor de KYC y rails bancarios via SPEI. México first, expansión a otros países LATAM en roadmap del proveedor.
+  </p>
+
+  <h2>Qué hace Dynerox</h2>
+
+  <p>Dynerox es la capa que conecta el mundo bancario mexicano con Stellar. Se encarga de:</p>
+
+  <ul>
+    <li><strong>KYC</strong>: verificación de identidad usando CURP y datos personales. Cumple regulación mexicana AML/CFT.</li>
+    <li><strong>On ramp</strong>: usuario paga en MXN via SPEI a una CLABE de Dynerox, recibe USDC en su Stellar wallet.</li>
+    <li><strong>Off ramp</strong>: usuario transfiere USDC de su wallet, recibe MXN en su CLABE registrada.</li>
+    <li><strong>Screening</strong>: OFAC, UN sanctions y listas locales al momento de KYC.</li>
+  </ul>
+
+  <p>
+    Accesly no toca directamente el dinero fiat ni los datos KYC. Actuamos como orquestador: el usuario completa KYC en un flow hosteado por Dynerox (<code>auth.dynerox.com</code>), y nosotros solo recibimos webhooks de status.
+  </p>
+
+  <h2>Flujo end to end del usuario</h2>
+
+  <ol class="step-list">
+    <li>Usuario tiene wallet Accesly creada. Quiere cargar fondos.</li>
+    <li>App abre <code>&lt;AddFundsFlow /&gt;</code> del kit. El componente consulta <code>useKyc()</code>.</li>
+    <li>Si KYC status es <code>not-started</code>, el flow pide datos: nombre, apellidos, CURP, fecha de nacimiento, teléfono, CLABE.</li>
+    <li>SDK llama <code>fiat.registerBankAccount(...)</code>. Backend crea el user en Dynerox via <code>POST /v1/public/users</code>, valida la CLABE via <code>GET /v1/public/banks/clabe/&#123;id&#125;</code>, guarda el <code>dyneroxUserId</code> en el <code>user_fragments</code>.</li>
+    <li>SDK llama <code>fiat.startOnRamp(&#123; amount, currency: "MXN" &#125;)</code>. Backend crea una route Dynerox de <code>MXN via SPEI</code> hacia <code>USDC via Stellar</code>, apuntando a la wallet address del user.</li>
+    <li>Response incluye <code>authorizationUrl</code>. El flow abre este URL en un modal / redirect. El usuario completa liveness check y autoriza la operación en Dynerox.</li>
+    <li>Dynerox devuelve al usuario una CLABE virtual + monto exacto para transferir. Usuario abre su banco y hace SPEI.</li>
+    <li>Cuando SPEI llega, Dynerox ejecuta on chain: manda USDC del hot wallet de Dynerox a la Stellar wallet del user.</li>
+    <li>Webhook <code>route.status_update</code> llega al backend Accesly. Actualizamos el status en DDB.</li>
+    <li>El componente del kit polea <code>useKyc</code> y detecta que la route completó. Muestra el nuevo balance USDC en la wallet.</li>
+  </ol>
+
+  <h2>Requisitos del usuario final</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr><th>Dato</th><th>Formato</th><th>Notas</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>CURP</td>
+        <td>18 caracteres alfanuméricos</td>
+        <td>Solo México. Valida contra base RENAPO durante el KYC.</td>
+      </tr>
+      <tr>
+        <td>CLABE</td>
+        <td>18 dígitos</td>
+        <td>Cuenta bancaria mexicana. Validada contra el catálogo de bancos autorizados.</td>
+      </tr>
+      <tr>
+        <td>Nombre completo</td>
+        <td>Nombre + apellido paterno + apellido materno</td>
+        <td>Tiene que matchear el CURP.</td>
+      </tr>
+      <tr>
+        <td>Fecha de nacimiento</td>
+        <td>YYYY-MM-DD</td>
+        <td>Se cruza con CURP. Usuario tiene que ser mayor de 18.</td>
+      </tr>
+      <tr>
+        <td>Teléfono</td>
+        <td>+52 formato E.164</td>
+        <td>Se usa para SMS de verificación durante liveness.</td>
+      </tr>
+      <tr>
+        <td>Liveness check</td>
+        <td>Selfie + video</td>
+        <td>Se hace en el flow hosteado de Dynerox, en device del user.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div class="callout-body">
+      <div class="callout-title">Solo México por ahora</div>
+      <p>Dynerox actualmente exige CURP (Clave Única de Registro de Población), documento oficial mexicano. Para usuarios en otros países LATAM el flow fiat queda deshabilitado con mensaje "Onramp solo disponible en México actualmente". Los usuarios pueden fondear via transferencia externa USDC o XLM desde otro exchange.</p>
+    </div>
+  </div>
+
+  <h2>Estados de una route</h2>
+
+  <p>Cada operación on ramp / off ramp pasa por estos estados:</p>
+
+  <table class="def-table">
+    <thead>
+      <tr><th>Estado</th><th>Significado</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>pending_identity</code></td>
+        <td>Route creada. Falta que el user complete KYC en Dynerox.</td>
+      </tr>
+      <tr>
+        <td><code>pending_authorization</code></td>
+        <td>KYC completado. Falta autorización del user en la UI de Dynerox (typically una firma o confirmación explícita).</td>
+      </tr>
+      <tr>
+        <td><code>active</code></td>
+        <td>Route activa. Backend está esperando el settlement bancario o on chain.</td>
+      </tr>
+      <tr>
+        <td><code>inactive</code></td>
+        <td>Route cancelada o expirada.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Webhooks de Dynerox</h2>
+
+  <p>Backend Accesly recibe webhooks de Dynerox en <code>POST /webhooks/dynerox</code>. Los eventos que procesamos:</p>
+
+  <ul>
+    <li><code>user.created</code>: user KYC creado en Dynerox. Guardamos <code>dyneroxUserId</code>.</li>
+    <li><code>user.updated</code>: cambio en datos del user.</li>
+    <li><code>kyc.completed</code>: usuario pasó KYC. Habilita on ramp.</li>
+    <li><code>route.status_update</code>: cambio de estado de una route específica (poll assisted).</li>
+  </ul>
+
+  <p>
+    Cada webhook incluye una firma HMAC en el header. Verificamos la firma con el secret que Dynerox nos devolvió al registrar el webhook.
+  </p>
+
+  <div class="callout callout-warn">
+    <div class="callout-icon">!</div>
+    <div class="callout-body">
+      <div class="callout-title">Falta evento de settlement final</div>
+      <p>Dynerox actualmente no dispara un webhook cuando la operación on chain se ejecuta (por ejemplo cuando el USDC llega al Stellar wallet del user). El backend Accesly complementa con un poll cada 30 segundos de las routes en <code>active</code> para actualizar el estado. Estamos en conversaciones con Dynerox para agregar el evento nativo.</p>
+    </div>
+  </div>
+
+  <h2>API keys</h2>
+
+  <p>
+    Dynerox emite dos tipos de keys:
+  </p>
+
+  <ul>
+    <li><code>sk_test_*</code>: sandbox. Sin dinero real. Usada por apps testnet.</li>
+    <li><code>sk_live_*</code>: producción. Dinero real. Usada por apps mainnet.</li>
+  </ul>
+
+  <p>
+    Las keys se guardan en AWS Secrets Manager y el backend las rutea según <code>appConfig.network</code>. Los integradores no ven ni configuran las keys de Dynerox: son de Accesly con Dynerox.
+  </p>
+
+  <h2>Uso desde el SDK</h2>
+
+  <h3>Hook useKyc</h3>
+
+  <pre><code><span class="k">import</span> &#123; useKyc &#125; <span class="k">from</span> <span class="s">'@accesly/react'</span>;
+
+<span class="k">const</span> &#123; <span class="n">status</span>, <span class="n">authorizationUrl</span>, <span class="n">refetch</span> &#125; = <span class="f">useKyc</span>();
+
+<span class="c">// status: 'not-started' | 'pending_identity' | 'pending_authorization' | 'active' | 'inactive'</span></code></pre>
+
+  <h3>Componente AddFundsFlow</h3>
+
+  <p>Componente del kit que orquesta KYC + on ramp en un solo flow.</p>
+
+  <pre><code><span class="k">import</span> &#123; AddFundsFlow &#125; <span class="k">from</span> <span class="s">'@accesly/react/kit'</span>;
+
+&lt;<span class="f">AddFundsFlow</span>
+  <span class="n">onDone</span>=&#123;() =&gt; <span class="f">navigate</span>(<span class="s">'/wallet'</span>)&#125;
+  <span class="n">defaultAmount</span>=&#123;<span class="s">"500"</span>&#125;
+/&gt;</code></pre>
+
+  <p>El componente detecta si el user tiene KYC. Si no, muestra formulario de registro. Si sí, muestra input de monto y dispara la route.</p>
+
+  <h3>Llamadas directas</h3>
+
+  <p>Para casos custom donde querés control fino:</p>
+
+  <pre><code><span class="k">const</span> &#123; <span class="n">fiat</span> &#125; = <span class="f">useAccesly</span>();
+
+<span class="c">// Registrar bank account + KYC data</span>
+<span class="k">await</span> <span class="n">fiat</span>.<span class="f">registerBankAccount</span>(&#123;
+  <span class="n">clabe</span>: <span class="s">'012180011201000123'</span>,
+  <span class="n">firstName</span>: <span class="s">'Luis'</span>,
+  <span class="n">paternalLastName</span>: <span class="s">'Perez'</span>,
+  <span class="n">maternalLastName</span>: <span class="s">'Sanchez'</span>,
+  <span class="n">holderCurp</span>: <span class="s">'PESL800101HDFRRS01'</span>,
+  <span class="n">birthDate</span>: <span class="s">'1980-01-01'</span>,
+  <span class="n">phone</span>: <span class="s">'+525512345678'</span>,
+&#125;);
+
+<span class="c">// Crear route MXN → USDC</span>
+<span class="k">const</span> <span class="n">route</span> = <span class="k">await</span> <span class="n">fiat</span>.<span class="f">startOnRamp</span>(&#123;
+  <span class="n">amount</span>: <span class="s">'500'</span>,
+  <span class="n">currency</span>: <span class="s">'MXN'</span>,
+&#125;);
+
+<span class="c">// Abrir authorizationUrl en nueva tab</span>
+<span class="n">window</span>.<span class="f">open</span>(<span class="n">route</span>.<span class="n">authorizationUrl</span>, <span class="s">'_blank'</span>);</code></pre>
+
+  <h2>Off ramp: retiro a CLABE</h2>
+
+  <p>El flow inverso: retirar USDC del wallet Stellar a la CLABE registrada.</p>
+
+  <pre><code><span class="k">const</span> <span class="n">route</span> = <span class="k">await</span> <span class="n">fiat</span>.<span class="f">startOffRamp</span>(&#123;
+  <span class="n">amount</span>: <span class="s">'20'</span>,
+  <span class="n">asset</span>: <span class="s">'USDC'</span>,
+  <span class="n">bankAccountId</span>: <span class="s">'&lt;dyneroxBankAccountId&gt;'</span>,
+&#125;);</code></pre>
+
+  <p>
+    Requisito: user ya tiene KYC <code>active</code> y por lo menos una CLABE registrada. Backend maneja la parte on chain (Stellar tx que manda USDC al hot wallet de Dynerox) y Dynerox se encarga del SPEI outbound al CLABE del user.
+  </p>
+
+  <h2>Consideraciones regulatorias</h2>
+
+  <ul>
+    <li><strong>Retention de KYC</strong>: Dynerox guarda los datos KYC por 5 años post cierre de cuenta (AML/CFT México).</li>
+    <li><strong>Umbrales AML</strong>: transacciones sobre cierto monto disparan reportes automáticos. Los thresholds los administra Dynerox.</li>
+    <li><strong>Bloqueos por sanctions</strong>: si un usuario cae en lista OFAC / UN durante el KYC, la route se cancela y el usuario queda bloqueado en Dynerox.</li>
+    <li><strong>Chargebacks</strong>: SPEI no permite chargebacks. Una vez que el SPEI llega, la USDC está garantizada.</li>
+  </ul>
+
+  <h2>Onboarding como integrador</h2>
+
+  <p>
+    Para habilitar KYC + fiat en tu app:
+  </p>
+
+  <ol class="step-list">
+    <li>Contactanos en <code>acceslyoficial@gmail.com</code> con "Habilitar fiat en app X".</li>
+    <li>Firmamos partnership terms con vos como integrador (necesario porque Dynerox exige KYB del integrador además del KYC del end user).</li>
+    <li>Habilitamos <code>appConfig.kyc.provider = "dynerox"</code> en tu app.</li>
+    <li>Deployás versión actualizada del SDK con <code>&lt;AddFundsFlow /&gt;</code>.</li>
+    <li>Testing end to end con montos chicos en sandbox antes de switch a prod.</li>
+  </ol>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li><a href="/docs/api-reference">API Reference</a>: endpoints de <code>/kyc/*</code> y <code>/onramp</code>.</li>
+    <li><a href="/docs/sdk-reference">SDK Reference</a>: hook <code>useKyc</code> y componente <code>&lt;AddFundsFlow /&gt;</code>.</li>
+    <li><a href="/docs/networks">Networks</a>: diferencia entre sandbox y prod de Dynerox.</li>
+  </ul>
+</DocsLayout>

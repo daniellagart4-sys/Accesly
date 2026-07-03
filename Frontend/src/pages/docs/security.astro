@@ -1,0 +1,231 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Seguridad" section="Cómo funciona" pageId="security">
+  <h1>Seguridad y modelo de amenazas</h1>
+  <p class="lead">
+    Qué ataques mitiga Accesly, cuáles quedan en manos del usuario y por qué el backend jamás ve la llave privada. Lectura obligatoria si vas a integrar Accesly en un producto financiero.
+  </p>
+
+  <h2>Premisa fundacional</h2>
+
+  <p>
+    La regla dura del diseño: <strong>la llave privada del usuario nunca sale del dispositivo del usuario en forma reconstruible</strong>. Ni Accesly como empresa, ni AWS como cloud provider, ni el integrador que usa el SDK, pueden reconstruir la llave privada de un usuario sin cómplice el usuario mismo (con su biométrico o passphrase).
+  </p>
+
+  <p>
+    Esa premisa se refleja en 5 propiedades técnicas concretas:
+  </p>
+
+  <ol>
+    <li>El backend guarda ciphertext, nunca plaintext de fragmentos.</li>
+    <li>Las llaves de cifrado se derivan del biométrico del usuario, no de secretos del backend.</li>
+    <li>El backend no tiene 2 de 3 fragmentos accesibles al mismo tiempo. F2 y F3 usan llaves de cifrado distintas.</li>
+    <li>La firma de transacciones ocurre en el navegador del usuario. Nunca se manda seed al backend.</li>
+    <li>La rotación de signers on chain requiere firma con la seed vieja, que solo el usuario puede reconstruir.</li>
+  </ol>
+
+  <h2>Matriz de amenazas</h2>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Ataque</th>
+        <th>Impacto</th>
+        <th>Mitigación</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Robo del dispositivo desbloqueado</td>
+        <td>Alto: atacante puede firmar</td>
+        <td>Timeout de sesión, spending limit por rule, MFA opcional</td>
+      </tr>
+      <tr>
+        <td>Robo del dispositivo bloqueado</td>
+        <td>Bajo: sin biométrico no hay PRF</td>
+        <td>Passkey exige unlock del OS antes de responder</td>
+      </tr>
+      <tr>
+        <td>Compromiso del backend Accesly (DynamoDB dump)</td>
+        <td>Nulo: solo ciphertext, sin llaves</td>
+        <td>F2 wrapped en KMS, F3 protegido por passphrase del usuario</td>
+      </tr>
+      <tr>
+        <td>Compromiso de KMS de AWS</td>
+        <td>Bajo: descifra F2 wrap pero F2 sigue cifrado con llave del user</td>
+        <td>Dos capas de cifrado: KMS wrap + AES con PRF derivada</td>
+      </tr>
+      <tr>
+        <td>Phishing de passphrase</td>
+        <td>Medio: si además roban device, comprometen wallet</td>
+        <td>Passphrase nunca se pide fuera del flow de recovery</td>
+      </tr>
+      <tr>
+        <td>Malware en el device</td>
+        <td>Alto si tiene acceso a memoria del browser</td>
+        <td>Zeroize post firma, WebAuthn con userVerification required</td>
+      </tr>
+      <tr>
+        <td>Man in the middle en transporte</td>
+        <td>Nulo: session key ECDH + HTTPS + JWT</td>
+        <td>F2 se envuelve en session key X25519 efímera</td>
+      </tr>
+      <tr>
+        <td>Ingeniería social a Accesly Core</td>
+        <td>Nulo: no tenemos las llaves</td>
+        <td>No podemos entregar lo que no tenemos</td>
+      </tr>
+      <tr>
+        <td>Rug pull del integrador que usa el SDK</td>
+        <td>Nulo: la wallet vive on chain, el integrador solo hostea UI</td>
+        <td>Usuario mantiene control de su seed via recovery flow</td>
+      </tr>
+      <tr>
+        <td>Compromiso del contrato Smart Account</td>
+        <td>Crítico: puede robar fondos</td>
+        <td>6 audits Almanax internos, timelock 48h en upgrades, plan de audit externo pre GA</td>
+      </tr>
+      <tr>
+        <td>Bug en Soroban runtime</td>
+        <td>Fuera de nuestro control</td>
+        <td>Confiamos en Stellar core team + validators</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Por qué el backend jamás puede firmar</h2>
+
+  <p>
+    Un examen granular del scenario "atacante tiene control total del backend Accesly (Lambdas + DynamoDB + KMS)":
+  </p>
+
+  <ol>
+    <li>El atacante puede leer todas las rows de <code>user_fragments</code>. Ve <code>fragmentF2Wrapped</code> (base64 KMS ciphertext).</li>
+    <li>El atacante puede pedir a KMS <code>Decrypt</code> con el <code>fragmentsKey</code>. Obtiene el <code>fragmentF2Encrypted</code> plaintext (que sigue siendo ciphertext AES).</li>
+    <li>Para descifrar ese AES ciphertext necesita la <code>F2Key = HKDF(PRFoutput, encryptionSalt, "accesly-f2-encryption")</code>.</li>
+    <li>El <code>PRFoutput</code> viene del passkey privkey del user. Vive en el Secure Enclave del device. El atacante no tiene forma de reproducirlo sin el device físico + biométrico del user.</li>
+    <li>Sin F2 plaintext, el atacante tiene 1 de 3 fragmentos (F3 en <code>email_fragments</code>, protegido por PBKDF2(passphrase)). Con 1 fragmento no puede reconstruir la seed. Necesitaría también F1 (del device del user) o crackear PBKDF2 600k del F3, lo cual computacionalmente es prohibitivo si el usuario tiene una passphrase decente.</li>
+  </ol>
+
+  <p>
+    Conclusión: incluso con control total del backend, el atacante no llega a los fondos. Necesita comprometer ADEMÁS el device del usuario.
+  </p>
+
+  <div class="callout callout-good">
+    <div class="callout-icon">✓</div>
+    <div class="callout-body">
+      <div class="callout-title">Comparativa</div>
+      <p>Wallets custodiales (Coinbase Exchange, Kraken) guardan seeds en HSM administrados por ellos. Si su HSM se compromete, los fondos de todos los usuarios están expuestos. Accesly no tiene ese single point of failure porque nunca centraliza seeds.</p>
+    </div>
+  </div>
+
+  <h2>Qué queda en manos del usuario</h2>
+
+  <p>
+    El modelo no custodial mueve ciertos riesgos del custodio al usuario. Es un trade off explícito y hay que comunicarlo honestamente.
+  </p>
+
+  <ul>
+    <li><strong>Pérdida del device + olvido de passphrase</strong>: no hay recuperación posible. Ni Accesly ni AWS ni ningún dios puede reconstruir la seed. Los fondos quedan inaccesibles para siempre.</li>
+    <li><strong>Ataque coercitivo</strong>: si un atacante fuerza al usuario a poner biométrico y passphrase, tiene acceso pleno. No hay "seguro contra secuestro". Recomendamos configurar spending limits diarios en el Smart Account para limitar el daño.</li>
+    <li><strong>Ingeniería social sobre passphrase</strong>: si el usuario le da su passphrase a un attacker que hackeó su device (accedió al F1), el attacker gana. La educación del usuario es responsabilidad del integrador.</li>
+  </ul>
+
+  <h2>Defensa en profundidad</h2>
+
+  <p>
+    Además de la separación arquitectural, hay varias capas defensivas:
+  </p>
+
+  <h3>Cifrado en tránsito</h3>
+
+  <p>
+    HTTPS es tabla obligatoria. Sobre HTTPS, F2 viaja envuelto en un session key efímero (X25519 ECDH por request), así aunque un atacante rompiera TLS solo vería un doble ciphertext.
+  </p>
+
+  <h3>Cifrado at rest doble</h3>
+
+  <p>
+    F2 en DynamoDB tiene dos capas de cifrado:
+  </p>
+
+  <ol>
+    <li>Interior: AES GCM con llave derivada del PRF del user. Esta es la llave "real" que solo el user puede reproducir.</li>
+    <li>Exterior: KMS wrap con el <code>fragmentsKey</code> de Accesly. Esta capa está para cumplir compliance de encryption at rest en cloud providers regulados.</li>
+  </ol>
+
+  <h3>Idempotencia de operaciones críticas</h3>
+
+  <p>
+    <code>recovery/finalize</code>, <code>createWallet</code>, y otras ops que mueven state usan <code>Idempotency-Key</code> header. Un attacker que reenvía el mismo request no lo procesamos dos veces. Los idempotency keys se guardan 24h con TTL en DDB.
+  </p>
+
+  <h3>Rate limiting</h3>
+
+  <p>
+    OTP recovery: máximo 3 por hora por email hash. Verify OTP: máximo 5 intentos antes de invalidar. API general: WAF con reglas por IP y por identidad Cognito.
+  </p>
+
+  <h3>Timelock en upgrades</h3>
+
+  <p>
+    Para cambiar el WASM del contrato Smart Account se requiere el <code>upgrade-rule</code>, que aplica timelock de 48 horas. Cualquier intento de upgrade se anuncia on chain con anticipación. Si vemos un upgrade sospechoso, hay ventana para reaccionar.
+  </p>
+
+  <h3>Audit trail</h3>
+
+  <p>
+    Todas las operaciones sensibles se loguean en <code>audit_logs</code> DDB table con TTL 90 días. Retention más largo para compliance disponible bajo request. Cada log tiene <code>userId</code>, <code>action</code>, <code>result</code>, <code>metadata</code>, timestamp e IP.
+  </p>
+
+  <h2>Estado de auditorías</h2>
+
+  <p>
+    Los 6 contratos Soroban tienen review interno hecho por <strong>Almanax</strong>. Zero findings críticos o high abiertos al día de hoy.
+  </p>
+
+  <ul>
+    <li>Smart Account v3</li>
+    <li>ed25519 verifier</li>
+    <li>secp256r1 verifier</li>
+    <li>spending limit rule</li>
+    <li>session key rule</li>
+    <li>governance timelock</li>
+  </ul>
+
+  <p>
+    Audit externo con firma independiente (OtterSec, Runtime Verification o similar) planeado antes de subir el cap de valor por wallet más allá de mil dólares. Hasta ese punto operamos con cap conservador y beta acotada.
+  </p>
+
+  <h2>Divulgación responsable</h2>
+
+  <p>
+    Si encontrás una vulnerabilidad, escribinos a <code>security@accesly.xyz</code> con detalle técnico. No abras issue público en GitHub. Respondemos en 48 horas para triage.
+  </p>
+
+  <p>
+    Publicamos hall of fame de reporters responsables. Bugs críticos elegibles para bug bounty (montos anunciados post GA en un programa formal Immunefi o HackerOne).
+  </p>
+
+  <h2>Compliance y regulación</h2>
+
+  <p>
+    Accesly opera como proveedor de infraestructura tecnológica. No custodiamos fondos. La responsabilidad regulatoria del custodio queda en el integrador que decide qué features exponer a sus usuarios.
+  </p>
+
+  <ul>
+    <li>KYC de usuarios para operaciones fiat: gestionado por <a href="/docs/kyc-fiat">Dynerox</a>.</li>
+    <li>Screening OFAC / UN sanctions: gestionado por Dynerox en operaciones fiat.</li>
+    <li>Retention de datos personales: 5 años post cierre de cuenta para cumplimiento AML/CFT.</li>
+    <li>GDPR / LGPD: derecho a acceso, borrado y portabilidad garantizados. Contactanos para ejercer estos derechos.</li>
+  </ul>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li><a href="/docs/recovery">Cómo funciona la recuperación</a> y por qué el modelo Shamir 2 de 3 permite recuperar sin comprometer seguridad.</li>
+    <li><a href="/docs/architecture">Arquitectura</a> completa del sistema.</li>
+  </ul>
+</DocsLayout>

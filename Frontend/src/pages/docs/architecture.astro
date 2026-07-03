@@ -1,0 +1,239 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Arquitectura" section="Cómo funciona" pageId="architecture">
+  <h1>Arquitectura</h1>
+  <p class="lead">
+    Cómo se compone una wallet Accesly. Tres capas coordinadas para que el usuario firme con biométrico sin que ninguna entidad (ni Accesly, ni AWS, ni el integrador) pueda reconstruir su llave privada.
+  </p>
+
+  <h2>Vista de alto nivel</h2>
+
+  <p>La wallet vive en tres lugares al mismo tiempo. Ninguno tiene la llave completa.</p>
+
+  <pre><code>┌─────────────────────────────────────────────────────────────┐
+│  Dispositivo del usuario (browser)                          │
+│                                                              │
+│    IndexedDB       Secure Enclave / TPM / StrongBox         │
+│    ┌──────────┐    ┌─────────────────────┐                  │
+│    │  F1 enc  │    │  Passkey (privkey)   │                  │
+│    │  F2 enc  │    │  PRF(salt) => output │                  │
+│    │  F3 enc  │    └─────────────────────┘                  │
+│    └──────────┘                                              │
+└─────────────────────────────────────────────────────────────┘
+                          │  (SDK)
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Backend Accesly (AWS)                                      │
+│                                                              │
+│    DynamoDB              KMS                                 │
+│    ┌──────────────┐      ┌──────────────────────┐            │
+│    │ F2 wrapped   │◀────▶│  fragmentsKey (HMAC) │            │
+│    │ F3 wrapped   │      │  sessionKey (X25519) │            │
+│    │ appConfig    │      │  relayerFundKey (KMS)│            │
+│    └──────────────┘      └──────────────────────┘            │
+└─────────────────────────────────────────────────────────────┘
+                          │  (Stellar SDK)
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Stellar Soroban                                            │
+│                                                              │
+│    Smart Account v3       Verifier contracts                │
+│    ┌──────────────────┐   ┌──────────────────────┐          │
+│    │ Owner ed25519    │   │ ed25519 verifier     │          │
+│    │ Passkey secp256r1│   │ secp256r1 verifier   │          │
+│    │ Context rules    │   │ spending limit       │          │
+│    └──────────────────┘   └──────────────────────┘          │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+
+  <h2>MPC con Shamir 2 de 3</h2>
+
+  <p>
+    Cuando el usuario crea su wallet, el SDK genera una llave privada ed25519 dentro del dispositivo. Esa llave nunca sale como está. Se parte en 3 fragmentos usando <strong>Shamir Secret Sharing</strong> con umbral 2 de 3.
+  </p>
+
+  <p>Cada fragmento se cifra con AES 256 GCM y se guarda en un lugar distinto:</p>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Fragmento</th>
+        <th>Dónde vive</th>
+        <th>Llave de cifrado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>F1</code></td>
+        <td>IndexedDB del navegador del usuario</td>
+        <td>HKDF(PRF output, salt, "f1")</td>
+      </tr>
+      <tr>
+        <td><code>F2</code></td>
+        <td>DynamoDB (envuelto en KMS)</td>
+        <td>HKDF(PRF output, salt, "f2")</td>
+      </tr>
+      <tr>
+        <td><code>F3</code></td>
+        <td>DynamoDB (email fragments)</td>
+        <td>PBKDF2(passphrase de recovery, salt, 600k)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    Para firmar una transacción se necesitan 2 fragmentos. En operación normal se usan F1 (del device) y F2 (del backend). Para recuperación en otro dispositivo se usan F2 y F3 (protegido por la passphrase que el usuario recuerda).
+  </p>
+
+  <div class="callout callout-good">
+    <div class="callout-icon">✓</div>
+    <div class="callout-body">
+      <div class="callout-title">Por qué Shamir 2 de 3 y no 2 de 2</div>
+      <p>Si fueran solo F1 + F2, un usuario que pierde el device pierde los fondos para siempre. F3 protegido por passphrase da un camino de rescate. Y no puede ser 2 de 2 con F2 y F3 solamente porque el backend tendría acceso pleno si se compromete.</p>
+    </div>
+  </div>
+
+  <h2>WebAuthn PRF: la llave que nunca se guarda</h2>
+
+  <p>
+    La parte crítica es qué cifra F1 y F2. La respuesta es: una llave derivada del biométrico del usuario, usando la extensión <strong>PRF</strong> de WebAuthn.
+  </p>
+
+  <p>WebAuthn PRF funciona así:</p>
+
+  <ol>
+    <li>El usuario registra un passkey en el sitio. El sistema operativo guarda la llave privada en el chip seguro del dispositivo (Secure Enclave, TPM, StrongBox). Esa llave nunca sale.</li>
+    <li>Cuando el sitio necesita una llave derivada, le manda al chip un salt aleatorio.</li>
+    <li>El chip pide biométrico al usuario. Si aprueba, el chip calcula HMAC(privkey, salt) y devuelve el output al sitio.</li>
+    <li>El sitio hace HKDF(output, encryption_salt, "accesly-f1-encryption") y obtiene la llave AES que cifra F1.</li>
+  </ol>
+
+  <p>
+    Ese HMAC(privkey, salt) es determinístico. Si el mismo dispositivo con el mismo passkey recibe el mismo salt, siempre devuelve el mismo output. Eso hace posible que el SDK pueda re derivar la llave de cifrado cada vez que necesita descifrar F1.
+  </p>
+
+  <p>
+    Un atacante que exfiltra todo el IndexedDB del navegador se lleva ciphertext inútil. Sin el biométrico del usuario en su dispositivo original, el HMAC nunca se puede reproducir. La llave privada del passkey nunca deja el chip.
+  </p>
+
+  <h3>Compatibilidad de PRF</h3>
+
+  <ul>
+    <li><strong>Android Chrome / Edge</strong>: soporte pleno.</li>
+    <li><strong>macOS Safari + iCloud Keychain</strong>: soporte pleno desde macOS 14.</li>
+    <li><strong>iOS Safari</strong>: soporte pleno desde iOS 17.4.</li>
+    <li><strong>Windows Chrome / Edge</strong>: soporte pleno con TPM 2.0.</li>
+    <li><strong>YubiKey y hardware keys físicos</strong>: soporte pleno.</li>
+  </ul>
+
+  <h2>Smart Account Soroban v3</h2>
+
+  <p>
+    La wallet on chain es un contrato Soroban llamado <strong>Smart Account v3</strong>. Cada usuario tiene el suyo, con su propia address única (<code>C...</code>).
+  </p>
+
+  <p>El contrato guarda tres pubkeys al momento del deploy:</p>
+
+  <ul>
+    <li><strong>Owner ed25519</strong>: la pubkey derivada del seed que Shamir reconstruye. Firma admin ops (rotate signer, upgrade).</li>
+    <li><strong>Passkey secp256r1</strong>: la pubkey del passkey del usuario. Firma transacciones normales (send, swap).</li>
+    <li><strong>Email commitment</strong>: hash del email verificado, usado por el flow de recovery.</li>
+  </ul>
+
+  <h3>Context rules</h3>
+
+  <p>
+    El contrato usa un patrón de <strong>context rules</strong> que define quién puede firmar qué. Cada operación pasa por una rule antes de ejecutarse.
+  </p>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Rule</th>
+        <th>Firma requerida</th>
+        <th>Uso</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>biometric-tx</code></td>
+        <td>Passkey secp256r1 + spending limit check</td>
+        <td>Send, swap, receive, transfers día a día</td>
+      </tr>
+      <tr>
+        <td><code>admin-cfg</code></td>
+        <td>Owner ed25519</td>
+        <td>Rotate signer, upgrade contract, cambiar rules</td>
+      </tr>
+      <tr>
+        <td><code>upgrade-rule</code></td>
+        <td>Owner ed25519 + timelock 48h</td>
+        <td>Cambiar el WASM del contrato</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    Esta separación hace que operaciones de riesgo alto (rotate signer, upgrade) requieran la seed reconstruida por Shamir, mientras operaciones normales solo requieren el passkey del dispositivo actual.
+  </p>
+
+  <h2>El flujo end to end</h2>
+
+  <h3>Signup y creación de wallet</h3>
+
+  <ol class="step-list">
+    <li>Usuario da signup con email o Google. Cognito emite JWT.</li>
+    <li>SDK pide al chip que registre un passkey nuevo. El chip guarda la privkey internamente, devuelve la pubkey secp256r1 al SDK.</li>
+    <li>Al registrar el passkey el SDK genera un salt de PRF y lo asocia al credential.</li>
+    <li>SDK pide al chip el PRF output usando ese salt. Se deriva la llave AES para F1 y F2.</li>
+    <li>SDK genera una seed ed25519 nueva, la parte con Shamir, cifra los 3 fragmentos.</li>
+    <li>SDK guarda F1 encrypted en IndexedDB, manda F2 y F3 encrypted al backend.</li>
+    <li>Backend arma la tx de deploy del Smart Account con el owner pubkey, passkey pubkey y email commitment. Firma con KMS relayer fund, submitea a Soroban.</li>
+    <li>Contract se deploya, el usuario tiene su wallet lista.</li>
+  </ol>
+
+  <h3>Firmar una transacción</h3>
+
+  <ol class="step-list">
+    <li>Usuario hace click en "Enviar 10 USDC a Luis".</li>
+    <li>Backend arma la tx unsigned. SDK la recibe.</li>
+    <li>SDK pide al chip el PRF output. Chip pide biométrico. Usuario aprueba.</li>
+    <li>SDK descifra F1 con la llave derivada.</li>
+    <li>SDK pide F2 al backend (envuelto en session key X25519 efímera para transporte seguro).</li>
+    <li>SDK descifra F2 con la llave derivada.</li>
+    <li>SDK reconstruye la seed con Shamir(F1, F2), firma la tx, borra la seed de memoria.</li>
+    <li>SDK manda la firma al backend, backend agrega fee bump con KMS, submitea a Soroban.</li>
+  </ol>
+
+  <p>
+    Toda la reconstrucción de la seed pasa en el device, en JavaScript, dentro de la sesión del usuario. Nunca sale del navegador. Cuando termina la firma, se zeroean los buffers de memoria.
+  </p>
+
+  <h2>Separación backend</h2>
+
+  <p>
+    El backend Accesly no puede firmar por el usuario. Lo que sí hace:
+  </p>
+
+  <ul>
+    <li>Guarda F2 y F3 cifrados. Son ciphertext opacos sin las llaves del device.</li>
+    <li>Envuelve F2 en KMS para reforzar el cifrado at rest (defense in depth).</li>
+    <li>Emite JWT de sesión Cognito para autorizar reads de F2.</li>
+    <li>Paga el gas de todas las transacciones desde una cuenta relayer administrada (KMS ed25519).</li>
+    <li>Indexa historia de transacciones desde Horizon y Mercury Data para queries rápidas.</li>
+    <li>Coordina el flujo de recovery emitiendo OTPs por email.</li>
+  </ul>
+
+  <p>
+    Lo que <strong>no</strong> hace: reconstruir la seed, firmar en nombre del usuario, o acceder a fondos sin la aprobación biométrica del usuario en su device.
+  </p>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li><a href="/docs/security">Modelo de amenazas</a>: qué ataques específicos mitiga cada capa.</li>
+    <li><a href="/docs/recovery">Flujo de recuperación</a>: cómo Shamir 2 de 3 permite recuperación con solo F2 + F3.</li>
+    <li><a href="/docs/networks">Redes</a>: cómo el mismo backend sirve testnet y mainnet.</li>
+  </ul>
+</DocsLayout>

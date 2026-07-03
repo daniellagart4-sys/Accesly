@@ -1,0 +1,88 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Qué es Accesly" section="Empezar" pageId="overview">
+  <h1>Qué es Accesly</h1>
+  <p class="lead">
+    Accesly es infraestructura para que apps y fintechs den de alta usuarios en Stellar sin que el usuario tenga que manejar seed phrases ni pagar gas. La llave privada nunca sale del dispositivo del usuario y el backend jamás la ve.
+  </p>
+
+  <h2>El problema que resuelve</h2>
+
+  <p>
+    Onboarding en cripto viene con una fricción brutal. Un usuario nuevo tiene que instalar una wallet, guardar 12 o 24 palabras en un lugar seguro, entender qué es una dirección, fondear con XLM para gas, y aceptar que si pierde el papel pierde los fondos. La tasa de abandono en ese flow es del 60 al 80 por ciento según distintos estudios de UX Web3.
+  </p>
+
+  <p>
+    Accesly resuelve esto con un modelo diferente. El usuario firma con biométrico (huella, cara, PIN del dispositivo). No hay seed phrase. No hay wallet extension. No hay costos de gas en pesos ni dólares. La experiencia se parece a abrir una app bancaria.
+  </p>
+
+  <h2>Cómo lo hace posible</h2>
+
+  <p>
+    La llave privada del usuario se genera en el dispositivo y se parte en 3 pedazos con Shamir Secret Sharing. Necesitás 2 de 3 para reconstruir la llave.
+  </p>
+
+  <ul>
+    <li><strong>F1</strong> vive cifrado en el navegador del usuario (IndexedDB del dispositivo).</li>
+    <li><strong>F2</strong> vive cifrado en el backend de Accesly (envuelto en KMS de AWS).</li>
+    <li><strong>F3</strong> vive cifrado en el backend, protegido por una passphrase que solo el usuario conoce.</li>
+  </ul>
+
+  <p>
+    Las llaves que descifran F1 y F2 se derivan del biométrico del usuario usando la extensión PRF de WebAuthn. El chip seguro del dispositivo (Secure Enclave en Apple, TPM en Windows, StrongBox en Android) produce un output determinístico que solo existe cuando el usuario aprueba con biométrico. Sin el biométrico del usuario, los 2 fragmentos que necesitamos son ciphertext inservibles.
+  </p>
+
+  <div class="callout callout-good">
+    <div class="callout-icon">✓</div>
+    <div class="callout-body">
+      <div class="callout-title">Premisa fundacional</div>
+      <p>Ni Accesly, ni AWS, ni el integrador pueden reconstruir la llave del usuario. Solo el usuario con su biométrico + una passphrase de recovery puede acceder a sus fondos. Esto está documentado en el ADR 006 del repo interno y es la línea que no cruzamos.</p>
+    </div>
+  </div>
+
+  <h2>Qué hace por vos como integrador</h2>
+
+  <p>
+    Si estás construyendo una app que necesita que sus usuarios tengan una wallet Stellar, Accesly te da tres cosas:
+  </p>
+
+  <ol>
+    <li><strong>SDK React embebible</strong>: <code>@accesly/react</code> con componentes prearmados (SignIn, SendFlow, SwapFlow, RecoveryFlow) que renderizan en tu app con tu branding.</li>
+    <li><strong>Backend administrado</strong>: Lambdas en AWS que manejan Cognito auth, custodia del fragmento F2 con KMS, deploy del Smart Account on chain, indexado de historia, y flujos de recuperación.</li>
+    <li><strong>Dashboard para developers</strong>: consola web donde creás tu app, configurás branding, gestionás API keys, ves métricas y controlás el KYC.</li>
+  </ol>
+
+  <p>
+    El resultado: tu app tiene wallet Stellar embedded en tres o cuatro días de integración, sin construir infraestructura de custodia, sin manejar recovery, sin cargar con la responsabilidad regulatoria de custodio.
+  </p>
+
+  <h2>Qué NO es Accesly</h2>
+
+  <p>
+    Somos explícitos con lo que Accesly no hace, para no confundir el pitch.
+  </p>
+
+  <ul>
+    <li><strong>No somos custodios</strong>. No podemos recuperar fondos de un usuario que perdió su dispositivo y su passphrase. Ese es el trade off explícito del modelo no custodial.</li>
+    <li><strong>No somos DEX</strong>. Integramos con Soroswap y SDEX para swaps XLM, USDC y otros assets, pero no somos market maker.</li>
+    <li><strong>No somos exchange</strong>. Para on ramp y off ramp con MXN usamos <a href="/docs/kyc-fiat">Dynerox</a>. Nosotros nos encargamos de la wallet, ellos del rail fiat.</li>
+    <li><strong>No somos multichain</strong>. Solo Stellar. Sin bridges, sin EVM, sin Solana. La razón: profundidad sobre superficie. Stellar es rápido, barato y tiene soporte nativo de assets emitidos como USDC de Circle.</li>
+  </ul>
+
+  <h2>Casos de uso reales</h2>
+
+  <ul>
+    <li><strong>Fintech LATAM</strong> que necesita cuentas Stellar para sus usuarios sin construir custody in house.</li>
+    <li><strong>Plataforma de remesas</strong> que quiere que el receptor tenga wallet propia en vez de una cuenta interna.</li>
+    <li><strong>App de loyalty</strong> que emite tokens y necesita que cada usuario tenga wallet para reclamarlos.</li>
+    <li><strong>Neobanco cripto</strong> que quiere ofrecer stablecoins con on ramp local sin licencia de custodio.</li>
+  </ul>
+
+  <h2>Siguientes pasos</h2>
+
+  <p>
+    Si ya entendiste qué hace Accesly y querés arrancar, seguí con <a href="/docs/quickstart">Quickstart</a>. Si querés entender la arquitectura antes de meter mano, mirá <a href="/docs/architecture">Arquitectura</a>. Si tenés dudas de seguridad, empezá por <a href="/docs/security">Seguridad</a>.
+  </p>
+</DocsLayout>

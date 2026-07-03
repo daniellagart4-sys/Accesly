@@ -1,0 +1,237 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Dashboard" section="Integraciones" pageId="dashboard">
+  <h1>Dashboard para developers</h1>
+  <p class="lead">
+    Consola web en <a href="https://dashboard-accesly.vercel.app/" target="_blank" rel="noopener">dashboard-accesly.vercel.app</a> donde creás apps, configurás branding, gestionás API keys y monitoreás usuarios.
+  </p>
+
+  <h2>Acceso al dashboard</h2>
+
+  <p>El dashboard corre auth propia con Cognito developer pool. Podés registrarte con:</p>
+
+  <ul>
+    <li><strong>Google</strong>: OAuth federado. Recomendado.</li>
+    <li><strong>Email + password</strong>: signup clásico con confirmación por email.</li>
+  </ul>
+
+  <p>
+    Una vez adentro, la primera vez el dashboard te pide crear tu primer app. Un developer puede tener múltiples apps (por ejemplo uno testnet para dev y uno mainnet para prod).
+  </p>
+
+  <h2>Crear tu primer app</h2>
+
+  <ol class="step-list">
+    <li>Click "Crear app nueva" en el sidebar.</li>
+    <li>Ingresá nombre del app (visible al usuario final, ejemplo "MiFintech").</li>
+    <li>Seleccioná environment: dev, staging o prod. Determina qué backend URL usa el SDK.</li>
+    <li>Seleccioná network: testnet o mainnet. <strong>Inmutable</strong> después de crear.</li>
+    <li>Agregá al menos un redirect URI de OAuth. Ejemplo: <code>http://localhost:5173/auth/callback</code> para dev local.</li>
+    <li>Click "Crear". El backend genera un <code>appId</code> tipo <code>app_d_prueba1_j42h0</code>.</li>
+  </ol>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div class="callout-body">
+      <div class="callout-title">appId estable</div>
+      <p>El <code>appId</code> es la única cosa que necesita el SDK. Copialo de la página del app y ponelo en tu <code>.env</code> como <code>VITE_ACCESLY_APP_ID</code> (o el equivalente de tu bundler).</p>
+    </div>
+  </div>
+
+  <h2>Estructura del sidebar</h2>
+
+  <p>Cada app tiene su propio sub menu con estas secciones:</p>
+
+  <table class="def-table">
+    <thead>
+      <tr><th>Sección</th><th>Uso</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Overview</td>
+        <td>Resumen ejecutivo: wallets creadas, TPS, alertas activas.</td>
+      </tr>
+      <tr>
+        <td>Users</td>
+        <td>Lista de todos los usuarios end del app. Search, filtros, status chip.</td>
+      </tr>
+      <tr>
+        <td>Metrics</td>
+        <td>Gráficos y KPIs. Export CSV / JSON.</td>
+      </tr>
+      <tr>
+        <td>Settings</td>
+        <td>Config del app: branding, redirect URIs, providers de auth, trustlines habilitadas.</td>
+      </tr>
+      <tr>
+        <td>API keys</td>
+        <td>Crear, rotar y revocar keys server to server.</td>
+      </tr>
+      <tr>
+        <td>Webhooks</td>
+        <td>Registrar endpoints para eventos del backend.</td>
+      </tr>
+      <tr>
+        <td>Contracts</td>
+        <td>Version del Smart Account WASM que usa el app. Historial de upgrades.</td>
+      </tr>
+      <tr>
+        <td>Audit logs</td>
+        <td>Trail completo de operaciones del app.</td>
+      </tr>
+      <tr>
+        <td>Dev tools</td>
+        <td>Snippets de integración copy paste para Vite, Next.js, Astro y React Native.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Branding</h2>
+
+  <p>
+    En Settings, sección "Branding", configurás cómo se ve el SDK en tu app. Los componentes del kit leen esta config automáticamente vía <code>useBranding()</code>.
+  </p>
+
+  <ul>
+    <li><strong>Display name</strong>: nombre visible del app.</li>
+    <li><strong>Logo URL</strong>: imagen que reemplaza el default Mark de Accesly.</li>
+    <li><strong>Primary color</strong>: color base para botones y accents. Se escribe como <code>--accesly-primary</code> CSS var.</li>
+    <li><strong>Secondary color</strong>: color de degradado. Combinado con primary hace <code>--accesly-grad</code>.</li>
+    <li><strong>Landing title / highlight / subtitle</strong>: textos custom en la pantalla de landing del SDK. Soportan <code>&#123;appName&#125;</code> como interpolación.</li>
+    <li><strong>Login button text</strong>: texto del botón principal de signup (default "Iniciar sesión").</li>
+  </ul>
+
+  <p>
+    El editor tiene autosave con debounce 1.2 segundos. Ves un preview live a la derecha del formulario mientras editás.
+  </p>
+
+  <div class="callout callout-good">
+    <div class="callout-icon">✓</div>
+    <div class="callout-body">
+      <div class="callout-title">Todo se propaga en tiempo real</div>
+      <p>Cuando cambiás branding y guardás, el SDK en tu app cliente lo detecta al próximo poll de <code>useAppConfig</code> (default 60s). Podés forzar refresh con <code>refetch()</code>.</p>
+    </div>
+  </div>
+
+  <h2>Providers de autenticación</h2>
+
+  <p>En Settings, sección "Auth providers", habilitás o deshabilitás:</p>
+
+  <ul>
+    <li><strong>Email + password</strong>: signup clásico.</li>
+    <li><strong>Google</strong>: OAuth federado via Cognito Hosted UI.</li>
+    <li><strong>Phone</strong>: SMS OTP (en roadmap, activable bajo request).</li>
+  </ul>
+
+  <p>
+    El componente <code>&lt;AuthForm /&gt;</code> del kit lee esta config y renderiza solo los providers habilitados. Si deshabilitás Google, el botón desaparece del UI de tus users al próximo refresh.
+  </p>
+
+  <h2>Redirect URIs para OAuth</h2>
+
+  <p>
+    Cognito valida estrictamente la URL de callback en el flow OAuth. Cualquier URL desde donde vas a lanzar login con Google tiene que estar registrada en Settings.
+  </p>
+
+  <p>Ejemplos típicos:</p>
+
+  <ul>
+    <li><code>http://localhost:5173/auth/callback</code> (Vite dev)</li>
+    <li><code>http://localhost:3000/auth/callback</code> (Next.js dev)</li>
+    <li><code>http://localhost:4321/demo/auth/callback</code> (Astro con sub path)</li>
+    <li><code>https://mi-app.com/auth/callback</code> (prod)</li>
+  </ul>
+
+  <p>
+    Si te olvidás de registrar una URL, Cognito devuelve <code>redirect_mismatch</code> al usuario en el consent screen de Google. Es el error #1 que reportan integradores nuevos.
+  </p>
+
+  <h2>API keys server to server</h2>
+
+  <p>
+    Para operaciones server side (procesar webhooks, buscar users por script, integraciones batch), creás API keys en la sección "API keys".
+  </p>
+
+  <ul>
+    <li><strong>Live keys</strong>: <code>sk_live_*</code>. Producción. Tienen acceso a todos los endpoints <code>/v1/*</code>.</li>
+    <li><strong>Test keys</strong>: <code>sk_test_*</code>. Sandbox. Solo apps testnet.</li>
+  </ul>
+
+  <div class="callout callout-danger">
+    <div class="callout-icon">!</div>
+    <div class="callout-body">
+      <div class="callout-title">Secret solo se muestra una vez</div>
+      <p>Al crear una API key, el secret se muestra una única vez en pantalla. Copialo y guardalo en tu vault de secrets (AWS Secrets Manager, HashiCorp Vault, Doppler). Si lo perdés, tenés que rotar la key.</p>
+    </div>
+  </div>
+
+  <h2>Webhooks</h2>
+
+  <p>
+    Registrás endpoints HTTPS para recibir eventos del backend. En "Webhooks" agregás:
+  </p>
+
+  <ul>
+    <li>URL del endpoint (HTTPS obligatorio).</li>
+    <li>Lista de eventos suscritos (<code>wallet.created</code>, <code>tx.completed</code>, <code>kyc.updated</code>, etc.).</li>
+    <li>Secret para verificar firma HMAC de las requests entrantes.</li>
+  </ul>
+
+  <p>
+    El backend Accesly hace retry con exponential backoff si tu endpoint responde algo distinto a 2xx. Después de 5 retries fallidos, el evento se marca como dead letter y podés verlo en la sección de webhooks con opción de re dispatch manual.
+  </p>
+
+  <h2>Users, Metrics, Audit logs</h2>
+
+  <p>Tres vistas para operar el app:</p>
+
+  <ul>
+    <li><strong>Users</strong>: cada row es un usuario end del app. Muestra userId (Cognito sub), walletAddress, G address, fecha de creación, KYC status, y un chip de estado ("active", "wallet", "no wallet"). Búsqueda por email, wallet o handle.</li>
+    <li><strong>Metrics</strong>: gráficos de barras y líneas para wallets creadas por día, transacciones completadas, volumen swap. Export CSV / JSON para análisis externo.</li>
+    <li><strong>Audit logs</strong>: trail completo de acciones. Filtrable por user, action, resultado. Retención 90 días.</li>
+  </ul>
+
+  <h2>Dev tools</h2>
+
+  <p>
+    La sección "Dev tools" tiene tabs para tu framework (React + Vite, Next.js, React Native). Cada tab muestra snippets copy paste con tu <code>appId</code>, tu <code>env</code>, y tus redirect URIs ya inyectados.
+  </p>
+
+  <p>
+    Los snippets incluyen: instalación de paquetes, config <code>.env</code>, <code>main.tsx</code> con AcceslyProvider, <code>App.tsx</code> con AuthCallback route, y <code>vite.config.ts</code> con polyfills. Todo listo para pegar en tu proyecto.
+  </p>
+
+  <h2>App switching</h2>
+
+  <p>
+    Arriba a la izquierda del sidebar hay un dropdown que muestra el app activo. Click para ver todos tus apps y switchear. Al switchear, el sidebar preserva la sub ruta (si estabas en Users, quedás en Users del app nuevo).
+  </p>
+
+  <h2>Cuenta developer</h2>
+
+  <p>
+    En el sidebar bajo "Cuenta" hay dos ítems:
+  </p>
+
+  <ul>
+    <li><strong>Perfil</strong>: cambiar nombre, avatar, email de contacto.</li>
+    <li><strong>Preferencias</strong>: toggle light / dark mode, idioma (español o inglés).</li>
+    <li><strong>Sign out</strong>: cierra sesión y vuelve al login.</li>
+  </ul>
+
+  <h2>Roles y ownership</h2>
+
+  <p>
+    Actualmente el modelo es "one developer, many apps". Un developer es owner de todos los apps que crea. No soportamos multi tenant seats (varios developers colaborando en el mismo app) todavía. Está en roadmap.
+  </p>
+
+  <h2>Siguientes pasos</h2>
+
+  <ul>
+    <li><a href="/docs/quickstart">Quickstart</a>: usar tu nuevo appId en el SDK.</li>
+    <li><a href="/docs/kyc-fiat">KYC y fiat</a>: habilitar on ramp Dynerox.</li>
+    <li><a href="/docs/networks">Networks</a>: mover de testnet a mainnet.</li>
+  </ul>
+</DocsLayout>

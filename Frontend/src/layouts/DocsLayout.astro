@@ -1,0 +1,669 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+  section?: string;
+  pageId?: string;
+}
+
+const {
+  title,
+  description = 'Documentación técnica de Accesly. SDK, arquitectura, seguridad, API y guías para integradores.',
+  section = '',
+  pageId = ''
+} = Astro.props;
+
+const fullTitle = `${title} · Accesly Docs`;
+
+const logoSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 38'%3E%3Cpath d='M20.8,0.0L19.6,0.3L18.8,0.6L18.3,0.8L17.8,1.1L17.4,1.4L17.1,1.7L16.8,1.9L16.5,2.2L16.3,2.5L16.1,2.8L15.9,3.0L15.9,3.3L15.7,3.6L15.5,3.9L15.4,4.1L15.3,4.4L15.1,4.7L15.0,5.0L14.9,5.2L14.8,5.5L14.6,5.8L14.5,6.1L14.3,6.3L14.2,6.6L14.2,6.9L13.9,7.2L13.8,7.4L13.7,7.7L13.5,8.0L13.4,8.3L13.4,8.5L13.2,8.8L13.1,9.1L13.0,9.4L12.9,9.6L12.7,9.9L12.6,10.2L12.5,10.5L12.3,10.7L12.2,11.0L12.1,11.3L12.0,11.6L11.8,11.8L11.6,12.1L11.5,12.4L11.4,12.7L11.3,12.9L11.1,13.2L11.0,13.5L11.0,13.8L10.8,14.0L10.7,14.3L10.6,14.6L10.4,14.9L10.3,15.1L10.2,15.4L10.1,15.7L9.9,16.0L9.8,16.2L9.7,16.5L9.5,16.8L9.4,17.1L9.3,17.3L9.1,17.6L9.0,17.9L8.9,18.2L8.7,18.4L8.6,18.7L8.6,19.0L8.4,19.3L8.3,19.6L8.2,19.8L8.0,20.1L7.9,20.4L7.8,20.7L7.7,20.9L7.6,21.2L7.4,21.5L7.3,21.8L7.1,22.0L7.0,22.3L6.9,22.6L6.7,22.9L6.6,23.1L6.5,23.4L6.4,23.7L6.2,24.0L6.1,24.2L6.1,24.5L5.9,24.8L5.8,25.1L5.7,25.3L5.5,25.6L5.4,25.9L5.3,26.2L5.2,26.4L5.0,26.7L4.9,27.0L4.8,27.3L4.6,27.5L4.5,27.8L4.4,28.1L4.3,28.4L4.1,28.6L4.0,28.9L3.8,29.2L3.7,29.5L3.7,29.7L3.6,30.0L3.4,30.3L3.3,30.6L3.1,30.8L3.0,31.1L2.9,31.4L2.7,31.7L2.6,31.9L2.5,32.2L2.4,32.5L2.2,32.8L2.1,33.0L2.0,33.3L1.8,33.6L1.7,33.9L1.6,34.1L1.5,34.4L1.3,34.7L1.2,35.0L1.2,35.2L1.0,35.5L0.9,35.8L0.8,36.1L0.6,36.3L0.5,36.6L0.4,36.9L0.3,37.2L0.1,37.4L0.0,37.7L43.9,37.7L43.7,37.4L43.6,37.2L43.5,36.9L43.4,36.6L43.2,36.3L43.1,36.1L43.0,35.8L42.8,35.5L42.8,35.2L42.7,35.0L42.5,34.7L42.4,34.4L42.3,34.1L42.2,33.9L42.0,33.6L41.9,33.3L41.8,33.0L41.6,32.8L41.5,32.5L41.4,32.2L41.3,31.9L41.1,31.7L41.0,31.4L40.9,31.1L40.7,30.8L40.6,30.6L40.4,30.3L40.3,30.0L40.3,29.7L40.2,29.5L40.1,29.2L39.9,28.9L39.8,28.6L39.7,28.4L39.6,28.1L39.4,27.8L39.2,27.5L39.1,27.3L39.0,27.0L38.8,26.7L38.7,26.4L38.6,26.2L38.5,25.9L38.3,25.6L38.2,25.3L38.1,25.1L37.9,24.8L37.9,24.5L37.8,24.2L37.6,24.0L37.5,23.7L37.3,23.4L37.3,23.1L37.1,22.9L37.0,22.6L36.8,22.3L36.7,22.0L36.6,21.8L36.4,21.5L36.2,21.2L36.1,20.9L36.0,20.7L35.9,20.4L35.8,20.1L35.6,19.8L35.5,19.6L35.4,19.3L35.3,19.0L35.2,18.7L35.1,18.4L34.9,18.2L34.8,17.9L34.7,17.6L34.5,17.3L34.4,17.1L34.3,16.8L34.1,16.5L34.0,16.2L33.9,16.0L33.8,15.7L33.6,15.4L33.5,15.1L33.4,14.9L33.2,14.6L33.1,14.3L33.0,14.0L32.9,13.8L32.8,13.5L32.6,13.2L32.5,12.9L32.4,12.7L32.3,12.4L32.2,12.1L32.0,11.8L31.9,11.6L31.7,11.3L31.6,11.0L31.5,10.7L31.3,10.5L31.2,10.2L31.1,9.9L31.0,9.6L30.8,9.4L30.7,9.1L30.6,8.8L30.5,8.5L30.4,8.3L30.3,8.0L30.1,7.7L30.0,7.4L29.8,7.2L29.7,6.9L29.6,6.6L29.4,6.3L29.3,6.1L29.2,5.8L29.0,5.5L28.9,5.2L28.8,5.0L28.7,4.7L28.5,4.4L28.4,4.1L28.3,3.9L28.1,3.6L28.0,3.3L27.8,3.0L27.7,2.8L27.5,2.5L27.2,2.2L26.9,1.9L26.6,1.7L26.3,1.4L25.8,1.1L25.5,0.8L24.9,0.6L24.2,0.3L22.9,0.0Z' fill='%23fff'/%3E%3Cpath d='M21.3,14.0L20.5,14.3L20.1,14.6L19.6,14.9L19.4,15.1L19.1,15.4L19.0,15.7L18.8,16.0L18.6,16.2L18.5,16.5L18.3,16.8L18.3,17.1L18.2,17.3L18.1,17.6L17.9,17.9L17.9,18.2L17.7,18.4L17.6,18.7L17.5,19.0L17.4,19.3L17.3,19.6L17.1,19.8L17.0,20.1L16.9,20.4L16.8,20.7L16.6,20.9L16.5,21.2L16.4,21.5L16.3,21.8L16.2,22.0L16.1,22.3L15.9,22.6L15.9,22.9L15.8,23.1L15.7,23.4L15.6,23.7L15.5,24.0L15.3,24.2L15.2,24.5L15.1,24.8L14.9,25.1L14.8,25.3L14.7,25.6L14.6,25.9L14.5,26.2L14.3,26.4L14.2,26.7L14.1,27.0L14.0,27.3L13.9,27.5L13.8,27.8L13.6,28.1L13.5,28.4L13.4,28.6L13.4,28.9L13.3,29.2L13.2,29.5L13.0,29.7L12.9,30.0L12.8,30.3L12.7,30.6L12.6,30.8L12.4,31.1L12.3,31.4L12.2,31.7L12.1,31.9L12.0,32.2L11.9,32.5L11.7,32.8L11.6,33.0L11.5,33.3L11.4,33.6L11.3,33.9L11.1,34.1L11.0,34.4L17.1,34.7L16.3,35.0L15.7,35.2L15.0,35.5L14.4,35.8L13.7,36.1L13.2,36.3L12.6,36.6L11.9,36.9L11.4,37.2L10.9,37.4L10.5,37.7L33.6,37.7L33.5,37.4L33.3,37.2L33.2,36.9L33.1,36.6L33.0,36.3L33.0,36.1L32.9,35.8L32.8,35.5L32.7,35.2L32.5,35.0L32.4,34.7L11.9,34.4L12.1,34.1L12.2,33.9L12.5,33.6L12.7,33.3L12.9,33.0L13.1,32.8L13.3,32.5L13.5,32.2L13.7,31.9L13.9,31.7L14.2,31.4L14.4,31.1L14.7,30.8L15.0,30.6L15.3,30.3L15.6,30.0L15.9,29.7L16.2,29.5L16.6,29.2L16.9,28.9L17.4,28.6L17.7,28.4L18.2,28.1L18.6,27.8L19.0,27.5L19.5,27.3L20.1,27.0L20.6,26.7L21.1,26.4L21.7,26.2L22.3,25.9L23.0,25.6L23.6,25.3L24.2,25.1L24.7,24.8L25.2,24.5L25.6,24.2L25.9,24.0L26.3,23.7L26.6,23.4L26.9,23.1L27.1,22.9L27.3,22.6L27.5,22.3L27.6,22.0L27.7,21.8L27.8,21.5L27.9,21.2L28.0,20.9L28.0,20.7L28.1,20.4L28.1,20.1L28.1,19.8L28.0,19.6L28.0,19.3L27.9,19.0L27.9,18.7L27.8,18.4L27.7,18.2L27.6,17.9L27.4,17.6L27.3,17.3L27.2,17.1L27.1,16.8L27.0,16.5L26.8,16.2L26.6,16.0L26.4,15.7L26.2,15.4L25.9,15.1L25.7,14.9L25.2,14.6L24.7,14.3L23.9,14.0Z' fill='%230c0c0f'/%3E%3Ctext x='48' y='30' font-family='system-ui,-apple-system,sans-serif' font-weight='800' font-size='26' letter-spacing='-0.3' fill='%23fff'%3Eccesly%3C/text%3E%3C/svg%3E";
+
+const nav = [
+  {
+    title: 'Empezar',
+    items: [
+      { id: 'index', label: 'Introducción', href: '/docs' },
+      { id: 'overview', label: 'Qué es Accesly', href: '/docs/overview' },
+      { id: 'quickstart', label: 'Quickstart', href: '/docs/quickstart' },
+    ],
+  },
+  {
+    title: 'Cómo funciona',
+    items: [
+      { id: 'architecture', label: 'Arquitectura', href: '/docs/architecture' },
+      { id: 'security', label: 'Seguridad', href: '/docs/security' },
+      { id: 'recovery', label: 'Recuperación', href: '/docs/recovery' },
+      { id: 'networks', label: 'Redes', href: '/docs/networks' },
+    ],
+  },
+  {
+    title: 'SDK y API',
+    items: [
+      { id: 'sdk-reference', label: 'SDK Reference', href: '/docs/sdk-reference' },
+      { id: 'api-reference', label: 'API Reference', href: '/docs/api-reference' },
+      { id: 'errors', label: 'Errores', href: '/docs/errors' },
+    ],
+  },
+  {
+    title: 'Integraciones',
+    items: [
+      { id: 'kyc-fiat', label: 'KYC y fiat', href: '/docs/kyc-fiat' },
+      { id: 'dashboard', label: 'Dashboard', href: '/docs/dashboard' },
+    ],
+  },
+  {
+    title: 'Recursos',
+    items: [
+      { id: 'changelog', label: 'Changelog', href: '/docs/changelog' },
+    ],
+  },
+];
+---
+
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="description" content={description} />
+    <title>{fullTitle}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+
+    <!-- Top nav -->
+    <nav class="docs-nav" role="navigation" aria-label="Main navigation">
+      <div class="docs-nav-inner">
+        <a href="/" class="docs-nav-logo" aria-label="Accesly home">
+          <img src={logoSvg} alt="Accesly" width="120" height="32" />
+        </a>
+        <div class="docs-nav-links">
+          <a href="/" class="docs-nav-link">Home</a>
+          <a href="/docs" class="docs-nav-link active">Docs</a>
+          <a href="/demo" class="docs-nav-link">Demo</a>
+        </div>
+        <div class="docs-nav-actions">
+          <a href="https://dashboard-accesly.vercel.app/" class="btn btn-ghost" target="_blank" rel="noopener">Dashboard</a>
+          <a href="https://github.com/Accesly" class="btn btn-primary" target="_blank" rel="noopener">GitHub</a>
+        </div>
+        <button class="docs-nav-mobile-toggle" type="button" aria-label="Toggle sidebar" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Docs shell -->
+    <div class="docs-shell">
+
+      <!-- Sidebar -->
+      <aside class="docs-sidebar" id="docsSidebar">
+        <nav aria-label="Docs navigation">
+          {nav.map(group => (
+            <div class="sidebar-group">
+              <div class="sidebar-group-title">{group.title}</div>
+              <ul class="sidebar-list">
+                {group.items.map(item => (
+                  <li>
+                    <a
+                      href={item.href}
+                      class={`sidebar-link ${pageId === item.id ? 'active' : ''}`}
+                    >
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      <!-- Content -->
+      <main class="docs-content">
+        {section && <div class="docs-breadcrumb">{section}</div>}
+        <slot />
+
+        <footer class="docs-footer">
+          <div class="docs-footer-inner">
+            <div>
+              <span class="docs-footer-brand">Accesly</span>
+              <span class="docs-footer-tag">Non custodial Stellar wallet infrastructure</span>
+            </div>
+            <div class="docs-footer-links">
+              <a href="/">Home</a>
+              <a href="/demo">Demo</a>
+              <a href="https://dashboard-accesly.vercel.app/" target="_blank" rel="noopener">Dashboard</a>
+              <a href="https://github.com/Accesly" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </div>
+        </footer>
+      </main>
+
+    </div>
+
+    <script>
+      const toggle = document.querySelector('.docs-nav-mobile-toggle');
+      const sidebar = document.getElementById('docsSidebar');
+      if (toggle && sidebar) {
+        toggle.addEventListener('click', () => {
+          const open = sidebar.classList.toggle('open');
+          toggle.setAttribute('aria-expanded', String(open));
+        });
+      }
+    </script>
+
+    <style is:global>
+      :root {
+        --bg: #0c0c0f;
+        --bg2: #141418;
+        --bg3: #1c1c22;
+        --bg4: #26262e;
+        --lav: #a78bfa;
+        --lav2: #c4b5fd;
+        --lavD: #7c3aed;
+        --lavDD: #6d28d9;
+        --mint: #34d399;
+        --mint2: #6ee7b7;
+        --mintD: #059669;
+        --tx: #f4f4f5;
+        --tx2: #a1a1aa;
+        --tx3: #71717a;
+        --border: rgba(255, 255, 255, 0.06);
+        --border2: rgba(255, 255, 255, 0.12);
+        --glass: rgba(255, 255, 255, 0.03);
+        --r: 16px;
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        font-family: 'DM Sans', sans-serif;
+        color: var(--tx);
+        background: var(--bg);
+        -webkit-font-smoothing: antialiased;
+      }
+      a { text-decoration: none; color: inherit; }
+      button { font-family: inherit; cursor: pointer; border: none; }
+      ::selection { background: var(--lavD); color: #fff; }
+      a:focus-visible, button:focus-visible {
+        outline: 2px solid var(--lav);
+        outline-offset: 3px;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+
+      /* Button variants (mirror del landing) */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 10px 20px;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .btn-primary {
+        background: var(--lav);
+        color: #0c0c0f;
+      }
+      .btn-primary:hover { background: var(--lav2); transform: translateY(-1px); }
+      .btn-ghost {
+        background: transparent;
+        color: var(--tx2);
+        border: 1px solid var(--border);
+      }
+      .btn-ghost:hover {
+        color: var(--tx);
+        border-color: var(--border2);
+        background: var(--glass);
+      }
+      .btn-outline {
+        background: transparent;
+        color: var(--tx);
+        border: 1px solid var(--border);
+      }
+      .btn-outline:hover {
+        border-color: var(--lav);
+        color: var(--lav);
+        background: rgba(167, 139, 250, 0.05);
+      }
+      .btn-lg { padding: 14px 28px; font-size: 15px; border-radius: 12px; }
+
+      /* Gradient text */
+      .grad-text {
+        background: linear-gradient(135deg, var(--lav), var(--mint));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      /* ==============================
+         Docs top nav
+         ============================== */
+      .docs-nav {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 100;
+        padding: 0 24px;
+        background: rgba(12, 12, 15, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border);
+      }
+      .docs-nav-inner {
+        max-width: 1360px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 64px;
+      }
+      .docs-nav-logo img { height: 28px; width: auto; }
+      .docs-nav-links { display: flex; gap: 28px; }
+      .docs-nav-link {
+        font-size: 14px;
+        color: var(--tx2);
+        font-weight: 500;
+        transition: color 0.2s;
+      }
+      .docs-nav-link:hover, .docs-nav-link.active { color: var(--tx); }
+      .docs-nav-link.active {
+        position: relative;
+      }
+      .docs-nav-link.active::after {
+        content: '';
+        position: absolute;
+        bottom: -22px;
+        left: 0; right: 0;
+        height: 2px;
+        background: var(--lav);
+        border-radius: 2px;
+      }
+      .docs-nav-actions { display: flex; gap: 10px; align-items: center; }
+      .docs-nav-mobile-toggle {
+        display: none;
+        background: none;
+        color: var(--tx);
+        padding: 4px;
+      }
+
+      /* ==============================
+         Docs shell (sidebar + content)
+         ============================== */
+      .docs-shell {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        max-width: 1360px;
+        margin: 0 auto;
+        padding-top: 64px;
+        min-height: 100vh;
+      }
+      .docs-sidebar {
+        position: sticky;
+        top: 64px;
+        height: calc(100vh - 64px);
+        overflow-y: auto;
+        padding: 32px 24px 40px;
+        border-right: 1px solid var(--border);
+      }
+      .sidebar-group { margin-bottom: 24px; }
+      .sidebar-group-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--tx3);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+        padding: 0 8px;
+      }
+      .sidebar-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+      .sidebar-link {
+        display: block;
+        padding: 7px 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        color: var(--tx2);
+        transition: all 0.15s;
+      }
+      .sidebar-link:hover {
+        color: var(--tx);
+        background: var(--glass);
+      }
+      .sidebar-link.active {
+        color: var(--lav);
+        background: rgba(167, 139, 250, 0.08);
+        font-weight: 500;
+      }
+
+      /* ==============================
+         Content area
+         ============================== */
+      .docs-content {
+        padding: 48px 56px 80px;
+        max-width: 880px;
+        min-width: 0;
+      }
+      .docs-breadcrumb {
+        font-size: 12px;
+        color: var(--lav);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-weight: 600;
+        margin-bottom: 16px;
+      }
+      .docs-content h1 {
+        font-family: 'Sora', sans-serif;
+        font-size: clamp(30px, 4vw, 42px);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+        margin-bottom: 20px;
+      }
+      .docs-content h2 {
+        font-family: 'Sora', sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin: 56px 0 16px;
+        padding-top: 8px;
+      }
+      .docs-content h3 {
+        font-family: 'Sora', sans-serif;
+        font-size: 18px;
+        font-weight: 600;
+        margin: 36px 0 12px;
+      }
+      .docs-content .lead {
+        font-size: 18px;
+        color: var(--tx2);
+        line-height: 1.6;
+        margin-bottom: 32px;
+      }
+      .docs-content p {
+        font-size: 15.5px;
+        color: var(--tx2);
+        line-height: 1.7;
+        margin-bottom: 16px;
+      }
+      .docs-content a {
+        color: var(--lav);
+        border-bottom: 1px solid rgba(167, 139, 250, 0.3);
+        transition: border-color 0.15s;
+      }
+      .docs-content a:hover { border-bottom-color: var(--lav); }
+      .docs-content strong { color: var(--tx); font-weight: 600; }
+      .docs-content ul, .docs-content ol {
+        padding-left: 22px;
+        margin-bottom: 20px;
+      }
+      .docs-content li {
+        font-size: 15.5px;
+        color: var(--tx2);
+        line-height: 1.7;
+        margin-bottom: 8px;
+      }
+      .docs-content li::marker { color: var(--tx3); }
+      .docs-content code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13.5px;
+        background: var(--bg3);
+        color: var(--lav2);
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
+      .docs-content pre {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px 22px;
+        margin: 20px 0 24px;
+        overflow-x: auto;
+        font-size: 13.5px;
+        line-height: 1.6;
+      }
+      .docs-content pre code {
+        background: transparent;
+        border: none;
+        padding: 0;
+        color: var(--tx);
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .docs-content pre .k { color: var(--lav); }
+      .docs-content pre .s { color: var(--mint2); }
+      .docs-content pre .c { color: var(--tx3); font-style: italic; }
+      .docs-content pre .n { color: #fbbf24; }
+      .docs-content pre .f { color: #60a5fa; }
+
+      /* Callouts */
+      .callout {
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin: 24px 0;
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+      }
+      .callout-icon {
+        flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        margin-top: 2px;
+      }
+      .callout-body { flex: 1; min-width: 0; }
+      .callout-body p:last-child { margin-bottom: 0; }
+      .callout-title {
+        font-family: 'Sora', sans-serif;
+        font-weight: 600;
+        color: var(--tx);
+        font-size: 14px;
+        margin-bottom: 4px;
+      }
+      .callout-info {
+        background: rgba(96, 165, 250, 0.06);
+        border: 1px solid rgba(96, 165, 250, 0.15);
+      }
+      .callout-info .callout-icon {
+        background: rgba(96, 165, 250, 0.2);
+        color: #60a5fa;
+      }
+      .callout-warn {
+        background: rgba(251, 191, 36, 0.06);
+        border: 1px solid rgba(251, 191, 36, 0.18);
+      }
+      .callout-warn .callout-icon {
+        background: rgba(251, 191, 36, 0.2);
+        color: #fbbf24;
+      }
+      .callout-danger {
+        background: rgba(248, 113, 113, 0.06);
+        border: 1px solid rgba(248, 113, 113, 0.18);
+      }
+      .callout-danger .callout-icon {
+        background: rgba(248, 113, 113, 0.2);
+        color: #f87171;
+      }
+      .callout-good {
+        background: rgba(52, 211, 153, 0.06);
+        border: 1px solid rgba(52, 211, 153, 0.18);
+      }
+      .callout-good .callout-icon {
+        background: rgba(52, 211, 153, 0.2);
+        color: var(--mint);
+      }
+
+      /* Cards para docs index */
+      .doc-cards {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+        margin: 28px 0;
+      }
+      .doc-card {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 22px 24px;
+        transition: all 0.2s;
+        display: block;
+      }
+      .doc-card:hover {
+        border-color: rgba(167, 139, 250, 0.3);
+        transform: translateY(-2px);
+        background: var(--bg3);
+      }
+      .doc-card {
+        border-bottom: 1px solid var(--border);
+      }
+      .doc-card:hover { border-bottom-color: rgba(167, 139, 250, 0.3); }
+      .doc-card-tag {
+        font-size: 11px;
+        color: var(--lav);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .doc-card-title {
+        font-family: 'Sora', sans-serif;
+        font-size: 17px;
+        font-weight: 600;
+        color: var(--tx);
+        margin-bottom: 6px;
+      }
+      .doc-card-text {
+        font-size: 13.5px;
+        color: var(--tx2);
+        line-height: 1.55;
+        margin: 0;
+      }
+
+      /* Definition table (for reference lists) */
+      .def-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0 24px;
+        font-size: 14px;
+      }
+      .def-table th, .def-table td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+      }
+      .def-table th {
+        color: var(--tx3);
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        background: var(--bg2);
+      }
+      .def-table td { color: var(--tx2); }
+      .def-table td code { font-size: 12.5px; }
+      .def-table tr:last-child td { border-bottom: none; }
+
+      /* Step list */
+      .step-list {
+        list-style: none;
+        padding: 0;
+        counter-reset: step;
+      }
+      .step-list > li {
+        counter-increment: step;
+        padding-left: 46px;
+        position: relative;
+        margin-bottom: 20px;
+      }
+      .step-list > li::before {
+        content: counter(step);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: rgba(167, 139, 250, 0.1);
+        color: var(--lav);
+        border: 1px solid rgba(167, 139, 250, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Sora', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      /* Footer */
+      .docs-footer {
+        margin-top: 96px;
+        padding-top: 32px;
+        border-top: 1px solid var(--border);
+      }
+      .docs-footer-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+      .docs-footer-brand {
+        font-family: 'Sora', sans-serif;
+        font-weight: 700;
+        color: var(--tx);
+        margin-right: 12px;
+      }
+      .docs-footer-tag {
+        font-size: 13px;
+        color: var(--tx3);
+      }
+      .docs-footer-links { display: flex; gap: 22px; }
+      .docs-footer-links a {
+        font-size: 13px;
+        color: var(--tx2);
+      }
+      .docs-footer-links a:hover { color: var(--tx); }
+
+      /* Mobile */
+      @media (max-width: 900px) {
+        .docs-nav-links { display: none; }
+        .docs-nav-mobile-toggle { display: inline-flex; }
+        .docs-shell { grid-template-columns: 1fr; }
+        .docs-sidebar {
+          position: fixed;
+          top: 64px;
+          left: 0;
+          width: 280px;
+          height: calc(100vh - 64px);
+          background: var(--bg);
+          border-right: 1px solid var(--border);
+          transform: translateX(-100%);
+          transition: transform 0.25s ease;
+          z-index: 90;
+        }
+        .docs-sidebar.open { transform: translateX(0); }
+        .docs-content { padding: 32px 24px 60px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * { animation: none !important; transition: none !important; }
+      }
+    </style>
+  </body>
+</html>
