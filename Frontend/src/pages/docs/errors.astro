@@ -128,6 +128,12 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
         <td>Auto: <code>wallet.addTrustlineG</code> + retry.</td>
       </tr>
       <tr>
+        <td><code>RotateWriteCapExceededError</code></td>
+        <td>422</td>
+        <td>Wallet con 4+ context rules. <code>rotate_signer</code> atómico excede el cap Soroban P27 (132KB writeBytes).</td>
+        <td>Auto: el SDK ejecuta el flow multi tx del Smart Account v3.2.0 (<code>rotate_signer_partial</code> por batches + <code>finalize_rotation</code>). Solo llega al caller si el flow multi tx también falla.</td>
+      </tr>
+      <tr>
         <td>Sin CredentialRecord local</td>
         <td>N/A</td>
         <td>IndexedDB vacío. Device nuevo o cache borrado.</td>

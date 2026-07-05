@@ -178,6 +178,16 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     Esta separación hace que operaciones de riesgo alto (rotate signer, upgrade) requieran la seed reconstruida por Shamir, mientras operaciones normales solo requieren el passkey del dispositivo actual.
   </p>
 
+  <h3>v3.2.0 rotate particionado</h3>
+
+  <p>
+    Smart Account v3.2.0 agrega dos funciones nuevas al contrato para wallets con muchas rules activas (4 o más, típicamente users que activaron XLM, USDC y otras policies): <code>rotate_signer_partial(rule_ids, new_owner, new_secp)</code> rota solo el subset de rules pasado en <code>rule_ids</code>, y <code>finalize_rotation(new_owner, new_secp, new_email_commitment)</code> cierra el flow multi tx persistiendo el email commitment y emitiendo <code>SignerRotated</code>. Esta separación existe porque el <code>rotate_signer</code> atómico en wallets grandes escribía más de 132KB en el footprint Soroban y excedía el cap de writeBytes de protocol 27.
+  </p>
+
+  <p>
+    El SDK detecta automáticamente cuándo usar cada path: si el rotate atómico rebota con <code>RotateWriteCapExceededError</code>, el hook cae al flow multi tx transparentemente. Wallets con 3 rules o menos siguen atómicas. Ambos paths cierran con la misma semántica: rotar owner + passkey + email commitment.
+  </p>
+
   <h2>El flujo end to end</h2>
 
   <h3>Signup y creación de wallet</h3>

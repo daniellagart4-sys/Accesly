@@ -8,18 +8,19 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     Historial de releases de Accesly: SDK, backend, dashboard y smart contracts. Entradas recientes primero.
   </p>
 
-  <h2>@accesly/react 2.6.0</h2>
+  <h2>@accesly/react 2.6.0 y @accesly/core 1.21.0</h2>
 
-  <p><em>Multi network support</em></p>
+  <p><em>Recovery multi-tx para wallets con muchas rules (Smart Account v3.2.0)</em></p>
 
   <ul>
-    <li>El SDK ahora detecta la red (testnet o mainnet) automáticamente del <code>appConfig</code>. No hace falta pasar <code>network</code> como prop.</li>
-    <li>Nuevo hook <code>useNetwork()</code>: azúcar sintáctico que devuelve <code>"testnet"</code> o <code>"mainnet"</code>.</li>
-    <li><code>&lt;WalletHome /&gt;</code> muestra badge visible cuando está en mainnet.</li>
-    <li>Componentes de firma (<code>&lt;SwapFlow /&gt;</code>, <code>&lt;SendFlow /&gt;</code>) muestran modal de confirmación en mainnet.</li>
-    <li>Explorer URLs se ajustan automáticamente al network correcto.</li>
-    <li>Tipos de <code>OrderRequest</code> y <code>RegisterBankAccountRequest</code> alineados con Dynerox (CLABE + CURP).</li>
-    <li>Nuevo hook <code>useKyc()</code> con estados <code>not-started</code>, <code>pending_identity</code>, <code>pending_authorization</code>, <code>active</code>, <code>inactive</code>.</li>
+    <li>Fix del bug de recovery en wallets con 4 o más context rules. En Stellar protocol 27 el cap de <code>txWriteBytes</code> es 132KB, y el <code>rotate_signer</code> atómico en esas wallets escribía ~166KB y era rechazado con <code>txSorobanInvalid</code> en el submit.</li>
+    <li>Nuevo contrato Smart Account v3.2.0 con dos funciones adicionales: <code>rotate_signer_partial(rule_ids, new_owner, new_secp)</code> rota un subset de rules por tx; <code>finalize_rotation(new_owner, new_secp, new_email_commitment)</code> cierra el flow persistiendo el email commitment y emitiendo el evento.</li>
+    <li>El SDK atrapa el error tipado <code>RotateWriteCapExceededError</code> del backend y ejecuta el flow multi-tx transparentemente: <code>N x (simulateRotatePartial → sign → rotatePartial)</code> en batches de 2 rules cada uno, cerrando con <code>simulateFinalizeRotation → sign → finalizeRotation</code>. El caller no ve la diferencia: mismo shape de entrada y salida.</li>
+    <li>Wallets con 3 rules o menos siguen usando el path atómico legacy, sin overhead ni endpoints adicionales.</li>
+    <li>Nuevos endpoints backend: <code>POST /recovery/simulate-rotate-partial</code>, <code>POST /recovery/rotate-partial</code>, <code>POST /recovery/simulate-finalize-rotation</code>, <code>POST /recovery/finalize-rotation</code>.</li>
+    <li>Nuevos métodos en <code>AccesslyEndpoints</code>: <code>simulateRotatePartial</code>, <code>rotatePartial</code>, <code>simulateFinalizeRotation</code>, <code>finalizeRotation</code>.</li>
+    <li>Nueva clase de error pública <code>RotateWriteCapExceededError extends AccesslyApiError</code> con campos <code>walletAddress</code>, <code>writeBytes</code>, <code>cap</code>, <code>rotatableRuleIds</code>.</li>
+    <li>El upgrade a v3.2.0 se propone automáticamente a users existentes vía <code>appConfig.wallet.targetVersion</code>. Rollout empieza en canary con auto-propose en la app de prueba y se extiende semanalmente.</li>
   </ul>
 
   <h2>@accesly/react 2.5.4</h2>

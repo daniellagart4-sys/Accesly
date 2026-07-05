@@ -373,6 +373,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li><code>GAddressNotBootstrappedError</code>: la G bridge no existe todavía.</li>
     <li><code>GMissingTrustlineError</code>: falta trustline en la G.</li>
     <li><code>WalletAlreadyExistsError</code>: intentaste bootstrap y ya hay wallet en backend.</li>
+    <li><code>RotateWriteCapExceededError</code>: la wallet tiene 4+ context rules y el rotate atómico excede el cap P27 de writeBytes. El SDK atrapa esta clase internamente y ejecuta el flow multi tx del Smart Account v3.2.0; solo llega al caller si el flow multi tx también falla. Trae <code>walletAddress</code>, <code>writeBytes</code>, <code>cap</code>, <code>rotatableRuleIds</code>.</li>
     <li><code>AuthError</code>, <code>ValidationError</code>, <code>RateLimitError</code>, etc.</li>
   </ul>
 

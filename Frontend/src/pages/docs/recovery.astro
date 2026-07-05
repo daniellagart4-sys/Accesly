@@ -102,6 +102,34 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     Como side effect, la <strong>G address bridge</strong> (dirección Stellar classic asociada) también se invalida porque su master key es la seed vieja. El SDK detecta esto y hace bootstrap de una G address nueva la próxima vez que se necesite (típicamente al hacer un swap SDEX).
   </p>
 
+  <h3>Rotate multi tx en wallets con muchas rules</h3>
+
+  <p>
+    A partir de Smart Account v3.2.0 el SDK maneja automáticamente wallets con 4 o más context rules activas (típicamente cuando el usuario activó XLM, USDC y otras policies). En esas wallets el <code>rotate_signer</code> atómico escribe más de 132KB en el footprint Soroban y excede el cap de protocol 27.
+  </p>
+
+  <p>
+    Cuando el backend detecta esta situación, devuelve un error tipado <code>RotateWriteCapExceededError</code> con la lista de <code>rotatableRuleIds</code>. El SDK reacciona particionando la rotación en varias transacciones:
+  </p>
+
+  <ol class="step-list">
+    <li>El SDK agrupa las rules en batches de 2 y ejecuta una tx <code>rotate_signer_partial(rule_ids, new_owner, new_secp)</code> por batch. Cada tx queda holgadamente bajo el cap.</li>
+    <li>Cuando todos los batches fueron aplicados, el SDK ejecuta una tx final <code>finalize_rotation(new_owner, new_secp, new_email_commitment)</code> que persiste el nuevo email commitment y emite el evento <code>SignerRotated</code>.</li>
+    <li>El backend recibe la firma del <code>finalize_rotation</code> y en la misma llamada persiste todos los nuevos fragments F1, F2, F3 en DynamoDB.</li>
+  </ol>
+
+  <p>
+    El caller del hook <code>recovery.completeRecovery(...)</code> no ve la diferencia entre el path atómico y el multi tx. Recibe el mismo shape de respuesta con <code>walletAddress</code>, <code>txHash</code> del <code>finalize_rotation</code> y <code>status</code>. Wallets con 3 rules o menos siguen usando el path atómico legacy, sin overhead ni endpoints adicionales.
+  </p>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div class="callout-body">
+      <div class="callout-title">Fee cubierto por el relayer</div>
+      <p>Cada tx del multi-tx cobra un fee que Accesly paga desde el relayer fund. En la práctica una wallet con 4 rules dispara 3 tx (2 batches + finalize) en lugar de 1, pero el usuario nunca paga XLM.</p>
+    </div>
+  </div>
+
   <h2>El rol de la passphrase</h2>
 
   <p>
@@ -190,6 +218,6 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <ul>
     <li><a href="/docs/security">Modelo de amenazas</a>: cómo se protege el flow de recovery contra ataques.</li>
     <li><a href="/docs/sdk-reference">SDK Reference</a>: props y callbacks del <code>&lt;RecoveryFlow /&gt;</code>.</li>
-    <li><a href="/docs/api-reference">API Reference</a>: endpoints <code>/recovery/otp/*</code> y <code>/recovery/finalize</code>.</li>
+    <li><a href="/docs/api-reference">API Reference</a>: endpoints <code>/recovery/otp/*</code>, <code>/recovery/finalize</code>, <code>/recovery/rotate-partial</code> y <code>/recovery/finalize-rotation</code>.</li>
   </ul>
 </DocsLayout>

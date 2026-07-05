@@ -172,6 +172,42 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <p>Header <code>X-Recovery-Jwt: &lt;jwt&gt;</code>. Body incluye el <code>signedAuthEntryXdr</code> + los nuevos fragments. Backend ejecuta el rotate on chain y persiste los fragments nuevos.</p>
 
+  <p>
+    En wallets con 4 o más context rules el submit rebota con HTTP 422 <code>code: ROTATE_SIGNER_WRITE_CAP_EXCEEDED</code>. El body del error incluye <code>rotatableRuleIds</code> con los IDs elegibles para partition. El SDK reacciona automáticamente y ejecuta el flow multi tx descrito abajo.
+  </p>
+
+  <h3>POST /recovery/simulate-rotate-partial</h3>
+
+  <p>Header <code>X-Recovery-Jwt: &lt;jwt&gt;</code>. Body:</p>
+
+  <pre><code>&#123;
+  <span class="s">"partialRuleIds"</span>: [<span class="s">0</span>, <span class="s">1</span>],
+  <span class="s">"newOwnerEd25519Pubkey"</span>: <span class="s">"&lt;hex 64&gt;"</span>,
+  <span class="s">"newSecp256r1Pubkey"</span>: <span class="s">"&lt;hex 130&gt;"</span>
+&#125;</code></pre>
+
+  <p>Backend arma la tx <code>rotate_signer_partial(rule_ids, new_owner, new_secp)</code> del Smart Account v3.2.0 para rotar solo el subset de rules pasado. Response idéntico al simulate legacy: <code>&#123; unsignedXdr, signaturePayloadHashBase64, placeholderAuthEntryXdr, contextRuleIds &#125;</code>.</p>
+
+  <h3>POST /recovery/rotate-partial</h3>
+
+  <p>Header <code>X-Recovery-Jwt: &lt;jwt&gt;</code>. Body <code>&#123; unsignedXdr, signedAuthEntryXdr, partialRuleIds &#125;</code>. Backend re simula con la auth firmada, submitea el batch y devuelve <code>&#123; walletAddress, txHash, status, rotatedRuleIds &#125;</code>. No persiste ningún fragment. El SDK llama este endpoint una vez por batch.</p>
+
+  <h3>POST /recovery/simulate-finalize-rotation</h3>
+
+  <p>Header <code>X-Recovery-Jwt: &lt;jwt&gt;</code>. Body:</p>
+
+  <pre><code>&#123;
+  <span class="s">"newOwnerEd25519Pubkey"</span>: <span class="s">"&lt;hex 64&gt;"</span>,
+  <span class="s">"newSecp256r1Pubkey"</span>: <span class="s">"&lt;hex 130&gt;"</span>,
+  <span class="s">"newEmailCommitment"</span>: <span class="s">"&lt;hex 64&gt;"</span>
+&#125;</code></pre>
+
+  <p>Backend arma la tx <code>finalize_rotation(new_owner, new_secp, new_email_commitment)</code>. Se llama una sola vez cuando todos los batches de <code>rotate-partial</code> ya fueron aplicados.</p>
+
+  <h3>POST /recovery/finalize-rotation</h3>
+
+  <p>Header <code>X-Recovery-Jwt: &lt;jwt&gt;</code>. Body incluye <code>signedAuthEntryXdr</code> + los mismos fragments que <code>/recovery/finalize</code> (F1', F2', F2 recovery', F3', salt, email commitment). Backend ejecuta el <code>finalize_rotation</code> on chain y persiste TODOS los nuevos fragments en la misma llamada. Response idéntico a <code>/recovery/finalize</code>: <code>&#123; walletAddress, txHash, status &#125;</code>.</p>
+
   <h2>KYC y fiat</h2>
 
   <h3>POST /kyc/register-bank-account</h3>

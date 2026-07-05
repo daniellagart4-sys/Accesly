@@ -108,6 +108,47 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li><strong>Mainnet</strong>: badge lavanda con texto "MAINNET". Además, componentes de firma (<code>&lt;SwapFlow /&gt;</code>, <code>&lt;SendFlow /&gt;</code>) muestran modal de confirmación antes de firmar.</li>
   </ul>
 
+  <h2>WASM hashes del Smart Account por versión</h2>
+
+  <p>
+    Cada release del Smart Account tiene su propio WASM hash. El backend elige qué versión deploya para cada wallet nueva según el <code>appConfig.wallet.targetVersion</code> del app dueño. Wallets existentes pueden hacer upgrade individual con firma del owner (admin cfg).
+  </p>
+
+  <table class="def-table">
+    <thead>
+      <tr>
+        <th>Versión</th>
+        <th>Red</th>
+        <th>WASM hash</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>v3.2.0</td>
+        <td>testnet</td>
+        <td><code>f1c549e2491e0f8d9cc7683f6056da2edd8a8c3d6786723ab1c86dae74a96b0e</code></td>
+        <td>canary</td>
+      </tr>
+      <tr>
+        <td>v3.1.0</td>
+        <td>testnet</td>
+        <td><code>a3173341e307542e9e47089cd00f0e254daa7a90f754c68c1a7ec9e8c70b3c71</code></td>
+        <td>stable</td>
+      </tr>
+      <tr>
+        <td>v3.2.0 y v3.1.0</td>
+        <td>mainnet</td>
+        <td>Consultar <code>GET /contracts?network=mainnet</code></td>
+        <td>Al momento del deploy productivo</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    v3.2.0 introduce <code>rotate_signer_partial</code> y <code>finalize_rotation</code> para poder rotar el signer en wallets con 4 o más context rules bajo el cap P27 de writeBytes. v3.1.0 sigue soportando el rotate atómico en wallets chicas y no requiere upgrade forzado.
+  </p>
+
   <h2>Migración de testnet a mainnet</h2>
 
   <p>
