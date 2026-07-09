@@ -12,8 +12,8 @@ importers:
         specifier: 1.23.0
         version: 1.23.0
       '@accesly/react':
-        specifier: 2.9.0
-        version: 2.9.0(react@19.2.7)
+        specifier: 2.10.0
+        version: 2.10.0(react@19.2.7)
       '@astrojs/check':
         specifier: ^0.9.6
         version: 0.9.9(prettier@3.9.4)(typescript@5.9.3)
@@ -90,8 +90,8 @@ packages:
       fake-indexeddb:
         optional: true
 
-  '@accesly/react@2.9.0':
-    resolution: {integrity: sha512-whm1v1YfUV+7TI2vLrdisI7ooiz/k1sg1aCGe6Xgzi7DY0l6VZUsZapS8sIXCXsGj5PEMb55wGpJTwOy/IjjsQ==}
+  '@accesly/react@2.10.0':
+    resolution: {integrity: sha512-r2P3ByJG3Z8iSKP5dELXM+FlQifhdrHG6M/2bbSgjZ03tQ3Ebq/uc9wtrOAonPSPmnvz24rS6VGFufSKF7YpBQ==}
     engines: {node: '>=20'}
     peerDependencies:
       react: '>=18.0.0'
@@ -1196,6 +1196,9 @@ packages:
 
   '@types/node@26.0.1':
     resolution: {integrity: sha512-fc3KiUoBt6kie0N9bIW3E47vZsuaMf0PM2AaUpLCLT0s/LvX1nxAim6Fc049cNxODPpGm6qRAuUOB86SkRuPQw==}
+
+  '@types/offscreencanvas@2019.7.3':
+    resolution: {integrity: sha512-ieXiYmgSRXUDeOntE1InxjWyvEelZGP63M+cGuquuRLuIKKT1osnkXjxev9B7d1nXSug5vpunx+gNlbVxMlC9A==}
 
   '@types/react-dom@19.2.3':
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
@@ -2847,6 +2850,9 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
+  qr-scanner@1.4.2:
+    resolution: {integrity: sha512-kV1yQUe2FENvn59tMZW6mOVfpq9mGxGf8l6+EGaXUOd4RBOLg7tRC83OrirM5AtDvZRpdjdlXURsHreAOSPOUw==}
+
   qs@6.15.3:
     resolution: {integrity: sha512-O9gl3zCl5h5blw1KGUzQKhA5oUXSl8rwUIM5o0S3nCXMliSvy5Dzx7/DJcI+SwgICv+IneSZwhBh1oSyEHA71A==}
     engines: {node: '>=0.6'}
@@ -3698,9 +3704,10 @@ snapshots:
       - encoding
       - supports-color
 
-  '@accesly/react@2.9.0(react@19.2.7)':
+  '@accesly/react@2.10.0(react@19.2.7)':
     dependencies:
       '@accesly/core': 1.23.0
+      qr-scanner: 1.4.2
       react: 19.2.7
     transitivePeerDependencies:
       - bare-url
@@ -4853,6 +4860,8 @@ snapshots:
   '@types/node@26.0.1':
     dependencies:
       undici-types: 8.3.0
+
+  '@types/offscreencanvas@2019.7.3': {}
 
   '@types/react-dom@19.2.3(@types/react@19.2.17)':
     dependencies:
@@ -6955,6 +6964,10 @@ snapshots:
 
   punycode@2.3.1:
     optional: true
+
+  qr-scanner@1.4.2:
+    dependencies:
+      '@types/offscreencanvas': 2019.7.3
 
   qs@6.15.3:
     dependencies:
