@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@accesly/core": "1.26.1",
-    "@accesly/react": "2.14.0",
+    "@accesly/react": "2.15.0",
     "@astrojs/check": "^0.9.6",
     "@astrojs/react": "^4.4.2",
     "@astrojs/vercel": "^9.0.4",
