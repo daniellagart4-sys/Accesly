@@ -15,9 +15,10 @@ type Step = 'compose' | 'signing' | 'success' | 'error';
  * Flow:
  *  1. User pickea from/to + amount + slippage
  *  2. Submit → unlockForSigning (passkey prompt)
- *  3. `tx.swap()` (Soroswap aggregator) → si falla "Path not found",
- *     auto-retry con `tx.swapViaSdex()` (SDEX classic). Mismo material
- *     unlocked, sin segundo prompt
+ *  3. `tx.swap()` (Soroswap aggregator) — el aggregator ya rutea a SDEX
+ *     internamente cuando le conviene, así que no necesitamos fallback
+ *     explícito (removido en 2026-07-12 porque requería `bootstrapG()`
+ *     previo del user)
  *  4. Success: muestra amountOut + venue (Soroswap/SDEX) + link explorer
  */
 export function Swap() {
@@ -94,20 +95,7 @@ export function Swap() {
         fragmentF2Key: material.fragmentF2Key,
         ownerPubkey: material.ownerPubkey,
       };
-      let r;
-      try {
-        r = await tx.swap(args);
-      } catch (soroswapErr) {
-        // Auto-fallback Soroswap → SDEX cuando no hay path. El material
-        // sigue unlocked, así que el retry es invisible para el user.
-        const msg = soroswapErr instanceof Error ? soroswapErr.message : '';
-        const noPath =
-          msg.includes('Path not found') ||
-          msg.includes('No path found') ||
-          msg.includes('soroswap');
-        if (!noPath) throw soroswapErr;
-        r = await tx.swapViaSdex(args);
-      }
+      const r = await tx.swap(args);
       setResult({
         txHash: r.txHash,
         amountOut: (Number(r.quote.amountOut) / 1e7).toString(),
