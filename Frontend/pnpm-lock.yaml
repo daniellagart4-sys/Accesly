@@ -12,8 +12,8 @@ importers:
         specifier: 1.25.0
         version: 1.25.0
       '@accesly/react':
-        specifier: 2.11.0
-        version: 2.11.0(react@19.2.7)
+        specifier: 2.12.0
+        version: 2.12.0(react@19.2.7)
       '@astrojs/check':
         specifier: ^0.9.6
         version: 0.9.9(prettier@3.9.4)(typescript@5.9.3)
@@ -90,8 +90,8 @@ packages:
       fake-indexeddb:
         optional: true
 
-  '@accesly/react@2.11.0':
-    resolution: {integrity: sha512-OqlAnRnnvgqkzZnrXSuUFf0kEIOnaeo2gnegQIajToWGrF7X7ki2lNQhCeWo8uwFQXSQJ9h1e94V3xF/RY+gmQ==}
+  '@accesly/react@2.12.0':
+    resolution: {integrity: sha512-xQY/BTO5X+zCl1AlLoJIjydpqvMOtsr2zOAe/Uev6sGIM5XQ96E9k7gM/PI2V7vvNilHRBPO03Bwi7Q/Zk/Niw==}
     engines: {node: '>=20'}
     peerDependencies:
       react: '>=18.0.0'
@@ -3704,7 +3704,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@accesly/react@2.11.0(react@19.2.7)':
+  '@accesly/react@2.12.0(react@19.2.7)':
     dependencies:
       '@accesly/core': 1.25.0
       qr-scanner: 1.4.2
