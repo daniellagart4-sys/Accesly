@@ -15,10 +15,10 @@ type Step = 'compose' | 'signing' | 'success' | 'error';
  * Flow:
  *  1. User pickea from/to + amount + slippage
  *  2. Submit → unlockForSigning (passkey prompt)
- *  3. `tx.swap()` (Soroswap aggregator) — el aggregator ya rutea a SDEX
- *     internamente cuando le conviene, así que no necesitamos fallback
- *     explícito (removido en 2026-07-12 porque requería `bootstrapG()`
- *     previo del user)
+ *  3. `tx.swap()` (Soroswap aggregator) → si falla (typical: Soroswap no
+ *     soporta Smart Accounts como trader), auto-retry con `tx.swapViaSdex()`
+ *     que usa SDEX classic via G-bridge del user. El material del passkey
+ *     se re-usa — sin segundo prompt. Bootstrap G on-demand (~10s primera vez).
  *  4. Success: muestra amountOut + venue (Soroswap/SDEX) + link explorer
  */
 export function Swap() {
@@ -95,7 +95,23 @@ export function Swap() {
         fragmentF2Key: material.fragmentF2Key,
         ownerPubkey: material.ownerPubkey,
       };
-      const r = await tx.swap(args);
+      let r;
+      try {
+        r = await tx.swap(args);
+      } catch (soroswapErr) {
+        // Auto-fallback Soroswap → SDEX. Soroswap Aggregator no soporta
+        // Smart Accounts como trader (InsufficientBalance en su simulación).
+        // El material del passkey se re-usa, sin segundo prompt.
+        const msg = soroswapErr instanceof Error ? soroswapErr.message : '';
+        const softFallback =
+          msg.includes('soroswap') ||
+          msg.includes('InsufficientBalance') ||
+          msg.includes('Path not found') ||
+          msg.includes('No path found') ||
+          msg.includes('expected 48');
+        if (!softFallback) throw soroswapErr;
+        r = await tx.swapViaSdex(args);
+      }
       setResult({
         txHash: r.txHash,
         amountOut: (Number(r.quote.amountOut) / 1e7).toString(),
