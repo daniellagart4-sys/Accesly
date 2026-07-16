@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccesly, useBalance } from '@accesly/react';
 import type { TransferAsset } from '@accesly/core';
@@ -23,7 +23,7 @@ type Step = 'compose' | 'signing' | 'success' | 'error';
  */
 export function Swap() {
   const navigate = useNavigate();
-  const { tx, wallet, auth } = useAccesly();
+  const { tx, wallet, auth, _internal } = useAccesly();
   const balance = useBalance();
 
   const [fromAsset, setFromAsset] = useState<TransferAsset>('XLM');
@@ -38,6 +38,55 @@ export function Swap() {
     platform: string;
     explorerUrl: string;
   } | null>(null);
+
+  // Fase 18.5 (2026-07-16) — preview live via /tx/swap/quote debounced.
+  // Sin XDR ni auth entries — solo pricing (~500ms). Backend intenta Soroswap
+  // /quote y cae a SDEX Horizon paths si no hay ruta.
+  const [preview, setPreview] = useState<{
+    amountOut: string;
+    priceImpactPct: string;
+    platform: string;
+    source: 'soroswap' | 'sdex';
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPreview(null);
+    setPreviewError(null);
+    const amt = Number(amount);
+    if (!isFinite(amt) || amt <= 0 || fromAsset === toAsset) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setPreviewLoading(true);
+      try {
+        const stroops = BigInt(Math.round(amt * 1e7)).toString();
+        const q = await _internal.endpoints.swapQuote({
+          fromAsset,
+          toAsset,
+          amountIn: stroops,
+          slippageBps,
+        });
+        if (controller.signal.aborted) return;
+        setPreview({
+          amountOut: (Number(q.amountOut) / 1e7).toFixed(7).replace(/\.?0+$/, ''),
+          priceImpactPct: q.priceImpactPct,
+          platform: q.platform,
+          source: q.source,
+        });
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setPreview(null);
+        setPreviewError(err instanceof Error ? err.message : 'sin cotización');
+      } finally {
+        if (!controller.signal.aborted) setPreviewLoading(false);
+      }
+    }, 500);
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [amount, fromAsset, toAsset, slippageBps, _internal]);
 
   function press(k: string) {
     let cur = amount;
@@ -244,9 +293,37 @@ export function Swap() {
               {displayAmount}
             </span>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 6 }}>
-            Rate ≈ Soroswap, fallback SDEX automático
-          </div>
+          {preview ? (
+            <div
+              className="text-center"
+              style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}
+            >
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: 'var(--ink)',
+                  letterSpacing: '-.01em',
+                }}
+              >
+                ≈ {preview.amountOut} {toAsset}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                Impacto {preview.priceImpactPct}% · vía{' '}
+                {preview.source === 'soroswap' ? 'Soroswap' : 'SDEX'}
+              </div>
+            </div>
+          ) : previewLoading ? (
+            <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 10 }}>Cotizando…</div>
+          ) : previewError && amount ? (
+            <div style={{ fontSize: 11, color: 'var(--warn, #d97706)', marginTop: 10 }}>
+              Sin cotización ahora — podés intentar firmar igual.
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 10 }}>
+              Cotización auto al teclear
+            </div>
+          )}
         </div>
 
         <div
